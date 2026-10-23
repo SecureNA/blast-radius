@@ -389,6 +389,8 @@ h1 .sub { color: var(--text-faint); font-weight: 500; }
 .abadge.disabled { background: var(--panel-2); color: var(--text-faint); border: 1px solid var(--line); }
 .abadge.role { background: #241a2e; color: #c79ae0; border: 1px solid #3c2a4a; }
 .abadge.group { background: #2a2416; color: #d8c27a; border: 1px solid #45391d; }
+.abadge.pim { background: #261f12; color: var(--caution); border: 1px solid #413312; }
+.abadge.owner { background: #1b2733; color: #9cc3e0; border: 1px solid #2b4257; }
 .abadge.cleared { background: var(--contained-bg); color: var(--contained); border: 1px solid #1d4038; }
 .abadge.cred { background: var(--takeover-bg); color: var(--takeover); border: 1px solid #4a2227; }
 .app-verdict { font-size: 10.5px; font-weight: 700; letter-spacing: 0.02em; padding: 4px 9px; border-radius: 20px; flex: none; }
@@ -441,6 +443,29 @@ h1 .sub { color: var(--text-faint); font-weight: 500; }
 .xb-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .xb-note { font-size: 12px; color: var(--contained); margin-top: 8px; min-height: 2px; }
 
+/* ============================ SAFETY UI ============================ */
+.crown-jewel { display: flex; gap: 11px; align-items: flex-start; background: var(--caution-bg);
+  border: 1px solid #3a2f17; border-left: 3px solid var(--caution); border-radius: var(--radius-sm);
+  padding: 12px 14px; margin-bottom: 16px; font-size: 12.5px; line-height: 1.5; color: #e7d6b0; }
+.crown-jewel .cj-ic { font-size: 15px; flex: none; }
+.crown-jewel b { color: #f4e4bd; }
+.since-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 14px 0 4px; }
+.since-row label { font-size: 12.5px; color: var(--text-dim); font-weight: 600; }
+.since-input { font: inherit; font-size: 13px; color: var(--text); background: var(--ink-2);
+  border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 7px 10px; color-scheme: dark; }
+.since-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
+.since-hint { font-size: 11.5px; color: var(--text-faint); flex: 1; min-width: 180px; line-height: 1.4; }
+.tenant-buttons { display: flex; gap: 10px; align-items: stretch; margin-top: 18px; }
+.tenant-buttons .analyze-btn { margin-top: 0; flex: 1; }
+.clear-btn { font: inherit; font-weight: 600; font-size: 14px; color: var(--text-dim); cursor: pointer;
+  background: var(--ink-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0 18px; }
+.clear-btn:hover { color: var(--takeover); border-color: #4a2227; }
+.clear-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.blindspot { display: flex; gap: 10px; align-items: flex-start; background: var(--ink-2);
+  border: 1px solid var(--line-soft); border-radius: var(--radius-sm); padding: 12px 14px; margin-top: 16px;
+  font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+.blindspot .bs-ic { flex: none; color: var(--text-faint); }
+.blindspot b { color: var(--text-dim); }
 
 /* ============================ PARTNER / MSP ============================ */
 .masterkey { border: 1px solid var(--line-soft); border-radius: var(--radius-sm); background: var(--ink-2);
@@ -647,8 +672,9 @@ const TOOL_VERSION = "0.9.1";
 //    unverified incident details removed from the Exchange Administrator and
 //    credential-audit entries; Graph read-logging claims corrected.
 
-// Microsoft's first-party app-owner tenant. A credential on a Microsoft-owned
-// service principal is expected; on any other external vendor SP it is not.
+// Microsoft's first-party app-owner tenant. Credentials on Microsoft-owned service
+// principals skip the generic vendor rule and get their own high-severity flag
+// below, because a customer-added credential there is rarer still.
 const MICROSOFT_FIRST_PARTY_TENANT = "f8cdef31-a31e-4b4a-93e4-5f571e91255a";
 
 // Cross-tenant credential allowlist: DATA, not code, so it is auditable and
@@ -1907,11 +1933,17 @@ function reportTenant(title) {
   html += `<p class="lede">Of ${r.total} applications analyzed, <b>${r.ga}</b> can reach Global Administrator` +
     (r.gaChained ? ` (${r.gaChained} only by chaining through another app or a group)` : "") +
     `. ${r.conditional} more are conditional, ${r.withRoles} hold a directory role, and ${r.suspCreds} carry credential-hygiene concerns. ` +
-    `${r.vendor} are vendor (multi-tenant) apps whose credential you cannot rotate.</p>`;
+    `${r.vendor} are vendor (multi-tenant) apps whose credential you cannot rotate.` +
+    (r.pimGa ? ` ${r.pimGa} of the Global Admin paths ${r.pimGa>1?"are":"is"} PIM-gated: reachable only through a logged activation.` : "") +
+    (r.crossTenantCreds ? ` <b>${r.crossTenantCreds} ${r.crossTenantCreds>1?"apps carry":"app carries"} a credential on a vendor or Microsoft-owned service principal, the persistence pattern from the ConnectWise incident.</b>` : "") +
+    `</p>` +
+    (d.since ? `<p class="lede">Review date: <b>${escapeHtml(d.since)}</b>. ${r.changedSince} credential(s) were created on or after it. Only credentials carry creation dates in this export, so role, group and consent changes since that date are not detected here.</p>` : "");
 
   html += `<div class="stats">
     ${rstat(r.ga,"reach Global Admin",r.ga?"red":"")}
     ${rstat(r.gaChained,"via a backdoor/group chain",r.gaChained?"red":"")}
+    ${rstat(r.pimGa,"GA via PIM activation",r.pimGa?"amber":"")}
+    ${rstat(r.crossTenantCreds,"cross-tenant credentials",r.crossTenantCreds?"red":"")}
     ${rstat(r.conditional,"conditional",r.conditional?"amber":"")}
     ${rstat(r.withRoles,"hold a directory role",r.withRoles?"amber":"")}
     ${rstat(r.suspCreds,"credential concerns",r.suspCreds?"amber":"")}
@@ -1925,10 +1957,24 @@ function reportTenant(title) {
     html += `<h2 class="sec">Priority findings: apps that can reach Global Admin</h2>`;
     ga.slice(0,12).forEach(sp => {
       let why = "";
-      if (sp.groupProof) { const g = sp.groupProof.group; why = `${sp.groupProof.how} the ${g.roleAssignable?"role-assignable ":""}group “${escapeHtml(g.name)}”, which holds a privileged role`; }
+      if (sp.viaPim) why = sp.pimGroup ? `is in or owns the group “${escapeHtml(sp.pimGroup.name)}”, which is PIM-eligible for a Global Admin-equivalent role (gated, logged activation)` : `is PIM-eligible for ${escapeHtml(((sp.roleObjsEligible||[]).find(x=>x.escalation==="direct")||{}).id||"a Global Admin-equivalent role")} (gated, logged activation)`;
+      else if (sp.groupProof) { const g = sp.groupProof.group; why = `${sp.groupProof.how} the ${g.roleAssignable?"role-assignable ":""}group “${escapeHtml(g.name)}”, which holds a privileged role`; }
+      else if (sp.gaViaOwnership && sp.gaProof) why = `owns the more privileged app “${escapeHtml(sp.gaProof.name)}” and can add a credential to it`;
       else if (sp.confirmedViaChain && sp.gaProof) why = `can plant a credential on the more privileged app “${escapeHtml(sp.gaProof.name)}” and inherit it`;
       else { const rr = (sp.analysis.directReasons[0]||sp.perms.find(p=>p.id==="AppRoleAssignment.ReadWrite.All")); why = rr ? `holds ${escapeHtml(rr.id)}` : (sp.roleObjs.find(x=>x.escalation==="direct") ? `holds the ${escapeHtml(sp.roleObjs.find(x=>x.escalation==="direct").id)} role` : "holds a direct-escalation permission"); }
       html += `<div class="finding red"><b>${escapeHtml(sp.name)}</b> <span class="muted">(${sp.appType==="multi-tenant"?"vendor":"own"}${sp.enabled?"":", disabled"})</span>: ${why}.</div>`;
+    });
+  }
+
+  // credential and ownership findings, with the reason each one fired
+  const credApps = d.sps.filter(s => (s.credFlags||[]).length || (s.ownerFindings||[]).length).sort((a,b)=>b.riskScore-a.riskScore);
+  if (credApps.length) {
+    html += `<h2 class="sec">Credential and ownership findings</h2>`;
+    credApps.slice(0,15).forEach(sp => {
+      const items = (sp.credFlags||[]).concat(sp.ownerFindings||[]);
+      const red = items.some(f => f.sev === "high");
+      html += `<div class="finding ${red?"red":"amber"}"><b>${escapeHtml(sp.name)}</b><ul style="margin:6px 0 0 18px;padding:0">` +
+        items.map(f => `<li><b>${escapeHtml(f.text)}.</b> ${f.why}</li>`).join("") + `</ul></div>`;
     });
   }
 
@@ -1936,8 +1982,9 @@ function reportTenant(title) {
   html += `<h2 class="sec">Application inventory</h2>`;
   html += `<table><thead><tr><th>Application</th><th>Type</th><th>Verdict</th><th>Roles</th><th>Flags</th></tr></thead><tbody>`;
   d.sps.slice().sort((a,b)=>b.riskScore-a.riskScore).forEach(sp => {
-    const v = sp.finalSev; const vl = v==="direct"?"Global Admin":v==="conditional"?"Conditional":"No known path";
-    const flags = []; if (!sp.enabled) flags.push("disabled"); if (sp.credFlags.length) flags.push("cred concern"); if (sp.groupProof) flags.push("via group"); if (sp.groupCleared) flags.push("group-cleared");
+    const v = sp.finalSev; const vl = v==="direct"?(sp.viaPim?"Global Admin (PIM-gated)":"Global Admin"):v==="conditional"?"Conditional":"No known path";
+    const flags = []; if (!sp.enabled) flags.push("disabled"); if (hasCrossTenantCred(sp)) flags.push("cross-tenant cred"); else if (sp.credFlags.length) flags.push("cred concern");
+    if (sp.gaViaOwnership) flags.push("via ownership"); if (sp.ownerFindings && sp.ownerFindings.length) flags.push("human owner"); if (sp.groupProof) flags.push("via group"); if (sp.groupCleared) flags.push("group-cleared");
     html += `<tr><td><b>${escapeHtml(sp.name)}</b><br><span class="muted" style="font-size:11px">${escapeHtml(sp.appId||"")}</span></td>` +
       `<td>${sp.appType==="multi-tenant"?"vendor":"own"}</td>` +
       `<td><span class="pill ${v}">${vl}</span></td>` +

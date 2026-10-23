@@ -3,10 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Blast Radius — Entra app permission analyzer</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; frame-src 'self' about:; base-uri 'none'; form-action 'none'">
+<title>Blast Radius: Entra app permission analyzer</title>
 <style>
 /* ============================ TOKENS ============================ */
 :root {
@@ -515,6 +513,7 @@ h1 .sub { color: var(--text-faint); font-weight: 500; }
     <div class="brand">
       <div class="mark" aria-hidden="true"></div>
       <h1>Blast Radius <span class="sub">· Entra app permission analyzer</span></h1>
+      <span id="kb-stamp" style="font-size:12px;color:var(--text-faint);margin-left:12px;white-space:nowrap"></span>
     </div>
     <div class="aud-toggle" role="group" aria-label="Audience">
       <button id="aud-tech" aria-pressed="true">Tech view</button>
@@ -525,7 +524,7 @@ h1 .sub { color: var(--text-faint); font-weight: 500; }
   <div class="incident">
     <div>
       <b>Why this exists.</b> In October 2026 a stolen vendor credential let a Microsoft 365 backup app's identity
-      be used across hundreds of tenants, and in at least one a related management app made itself Global Administrator
+      be used to sign in to more than 160 tenants, and in at least one a related management app made itself Global Administrator
       and planted secrets on other apps. Most teams had no idea an app could do that. This tool turns a permission list
       into a plain answer: if this app gets popped, what can the attacker reach, and can they take over the tenant?
       <a href="https://www.huntress.com/blog/vendor-credential-enables-unauthorized-access" target="_blank" rel="noopener">Read the Huntress writeup →</a>
@@ -560,7 +559,7 @@ h1 .sub { color: var(--text-faint); font-weight: 500; }
       </div>
 
       <!-- app type -->
-      <span class="field-label">App type — this changes which controls work</span>
+      <span class="field-label">App type (this changes which controls work)</span>
       <div class="apptype">
         <label>
           <input type="radio" name="apptype" value="multi-tenant" checked>
@@ -587,7 +586,7 @@ h1 .sub { color: var(--text-faint); font-weight: 500; }
       <!-- PASTE mode -->
       <div id="mode-paste" style="display:none">
         <span class="field-label">Paste service-principal sign-in detail, an audit export, or a Graph permissions dump</span>
-        <textarea class="paste-area" id="paste" placeholder="Paste JSON or text here. The tool scans for known permission strings and role names — e.g. &quot;RoleManagement.ReadWrite.Directory&quot;, &quot;Mail.ReadWrite&quot;, &quot;Global Administrator&quot;."></textarea>
+        <textarea class="paste-area" id="paste" placeholder="Paste JSON or text here. The tool scans for known permission strings and role names, e.g. &quot;RoleManagement.ReadWrite.Directory&quot;, &quot;Mail.ReadWrite&quot;, &quot;Global Administrator&quot;."></textarea>
         <button class="script-toggle" id="script-toggle">Need a read-only script to generate this? Show it ▾</button>
         <div class="script-box" id="script-box">
           <pre id="script-text"></pre>
@@ -617,11 +616,11 @@ h1 .sub { color: var(--text-faint); font-weight: 500; }
   <div id="tenant-mode" hidden>
     <div class="panel tenant-input">
       <h2>Paste a read-only export of your tenant's apps</h2>
-      <p class="hint">Every app (service principal), its permissions, directory roles, owners and credentials — analyzed together so the tool can trace one app backdooring another all the way to Global Admin. Everything runs in your browser; nothing is uploaded.</p>
+      <p class="hint">Every app (service principal), its permissions, directory roles, owners, and credentials. The tool analyzes them together so it can trace one app backdooring another all the way to Global Admin. Everything runs in your browser; nothing is uploaded.</p>
 
       <div class="crown-jewel">
         <span class="cj-ic">🗝️</span>
-        <div>This export maps every privilege path in your tenant — <b>treat it like a password vault.</b> Don't email it or paste it into a ticket. Analyze it here (locally), then clear it and delete the file. The tool makes no network calls; you can confirm that in your browser's dev tools.</div>
+        <div>This export maps every privilege path in your tenant. <b>Treat it like a password vault.</b> Don't email it or paste it into a ticket. Analyze it here (locally), then clear it and delete the file. The tool makes no network calls; you can confirm that in your browser's dev tools.</div>
       </div>
 
       <div class="tenant-io">
@@ -644,7 +643,7 @@ h1 .sub { color: var(--text-faint); font-weight: 500; }
       <div class="since-row">
         <label for="tenant-since">“What changed since” (optional):</label>
         <input type="date" id="tenant-since" class="since-input">
-        <span class="since-hint">Flags credentials dated on/after this. Only items that carry a creation date are shown — untimestamped changes aren't detected.</span>
+        <span class="since-hint">Flags credentials dated on/after this. Only items that carry a creation date are shown. Untimestamped changes aren't detected.</span>
       </div>
 
       <div class="tenant-buttons">
@@ -661,11 +660,11 @@ h1 .sub { color: var(--text-faint); font-weight: 500; }
   <div id="partner-mode" hidden>
     <div class="panel tenant-input">
       <h2>Map a partner's cross-tenant reach (GDAP)</h2>
-      <p class="hint">Under GDAP, a partner-tenant security group is mapped to Entra roles scoped into each customer tenant — so whoever sits in that group, or steals its credential, can act in every customer it reaches. Paste a read-only export of the partner's GDAP relationships to see which customers a single compromise unlocks, and which groups are the master keys. Browser-only.</p>
+      <p class="hint">Under GDAP, a partner-tenant security group is mapped to Entra roles scoped into each customer tenant, so whoever sits in that group, or steals its credential, can act in every customer it reaches. Paste a read-only export of the partner's GDAP relationships to see which customers a single compromise unlocks, and which groups are the master keys. Browser-only.</p>
 
       <div class="crown-jewel">
         <span class="cj-ic">🗝️</span>
-        <div>This map covers <b>every customer tenant</b> a partner compromise can reach — the single most sensitive file an MSP can produce. <b>Treat it like a password vault.</b> Keep it off tickets and email, analyze it here (locally), then clear it and delete the file. No network calls are made.</div>
+        <div>This map covers <b>every customer tenant</b> a partner compromise can reach, the single most sensitive file an MSP can produce. <b>Treat it like a password vault.</b> Keep it off tickets and email, analyze it here (locally), then clear it and delete the file. No network calls are made.</div>
       </div>
 
       <div class="tenant-io">
