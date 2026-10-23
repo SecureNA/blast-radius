@@ -1,0 +1,61 @@
+{
+  "partnerTenantId": "aaaa1111-bbbb-2222-cccc-333333333333",
+  "generatedAt": "2026-10-22T09:30:00.0000000Z",
+  "gdapRelationships": [
+    {
+      "id": "rel-acme",
+      "customer": { "tenantId": "cust-acme-0001", "displayName": "Acme Manufacturing" },
+      "status": "active",
+      "endDateTime": "2027-12-01T00:00:00Z",
+      "accessDetails": { "unifiedRoles": [ { "roleDefinitionId": "62e90394-69f5-4237-9190-012177145e10" } ] }
+    },
+    {
+      "id": "rel-borealis",
+      "customer": { "tenantId": "cust-borealis-0002", "displayName": "Borealis Legal" },
+      "status": "active",
+      "endDateTime": "2026-11-01T00:00:00Z",
+      "accessDetails": { "unifiedRoles": [ { "roleDefinitionId": "29232cdf-9323-42fd-ade2-1d097af3e4de" } ] }
+    },
+    {
+      "id": "rel-cobalt",
+      "customer": { "tenantId": "cust-cobalt-0003", "displayName": "Cobalt Clinic" },
+      "status": "active",
+      "endDateTime": "2027-12-01T00:00:00Z",
+      "accessDetails": { "unifiedRoles": [ { "roleDefinitionId": "729827e3-9c14-49f7-bb1b-9608f156bbb8" } ] }
+    }
+  ],
+  "accessAssignments": [
+    {
+      "relationshipId": "rel-acme",
+      "accessContainer": { "accessContainerId": "grp-l3", "accessContainerType": "securityGroup" },
+      "accessDetails": { "unifiedRoles": [ { "roleDefinitionId": "62e90394-69f5-4237-9190-012177145e10" } ] }
+    },
+    {
+      "relationshipId": "rel-acme",
+      "accessContainer": { "accessContainerId": "grp-rmm", "accessContainerType": "securityGroup" },
+      "accessDetails": { "unifiedRoles": [ { "roleDefinitionId": "62e90394-69f5-4237-9190-012177145e10" } ] }
+    },
+    {
+      "relationshipId": "rel-borealis",
+      "accessContainer": { "accessContainerId": "grp-l1", "accessContainerType": "securityGroup" },
+      "accessDetails": { "unifiedRoles": [ { "roleDefinitionId": "29232cdf-9323-42fd-ade2-1d097af3e4de" } ] }
+    },
+    {
+      "relationshipId": "rel-cobalt",
+      "accessContainer": { "accessContainerId": "grp-l1", "accessContainerType": "securityGroup" },
+      "accessDetails": { "unifiedRoles": [ { "roleDefinitionId": "729827e3-9c14-49f7-bb1b-9608f156bbb8" } ] }
+    }
+  ],
+  "securityGroups": [
+    { "id": "grp-l3", "displayName": "L3 Engineering", "members": ["usr-alice", "usr-bob"] },
+    { "id": "grp-l1", "displayName": "L1 Helpdesk", "members": ["usr-carol", "usr-dave"] },
+    { "id": "grp-rmm", "displayName": "RMM Automation", "members": ["sp-rmm-app"] }
+  ],
+  "principals": [
+    { "id": "usr-alice", "displayName": "Alice", "type": "user", "mfa": true },
+    { "id": "usr-bob", "displayName": "Bob", "type": "user", "mfa": true },
+    { "id": "usr-carol", "displayName": "Carol", "type": "user", "mfa": true },
+    { "id": "usr-dave", "displayName": "Dave", "type": "user", "mfa": false },
+    { "id": "sp-rmm-app", "displayName": "ConnectWise RMM", "type": "servicePrincipal", "mfa": null }
+  ]
+}
