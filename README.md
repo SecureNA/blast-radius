@@ -12,7 +12,7 @@ The tool runs entirely in your browser. It collects no data and makes no network
 
 The public build does less on purpose. Asking people to paste tenant exports into a random web page and promising "trust me bro, I'm not gathering data" is not responsible, and the industry needs to stop reinforcing that habit. The public build at https://pslorenz.github.io/blast-radius/ is a before-you-consent checker: pick or paste the permissions an app is requesting and see its blast radius before you grant anything.
 
-The offline build adds whole-tenant analysis and GDAP partner mapping. It is meant for data you should never paste into someone else's URL.
+The offline build adds whole-tenant analysis and GDAP partner mapping. It is meant for data you should never paste into someone else's URL, so don't host it publicly either. Run it from a local file or from hosting you control.
 
 ## Running the offline build
 
@@ -28,11 +28,15 @@ You don't have to take the no-network claim on faith either. Both builds carry a
 
 The core is a knowledge base of Entra application permissions and directory roles, classified into escalation tiers that mirror public research and Microsoft documentation. Every app gets a three-state Global Admin verdict: direct, conditional, or no known path.
 
-The offline build resolves takeover chains transitively. It follows one app planting a credential on another, group membership and role-assignable group paths, and GDAP reach across customer tenants. Both builds rank compensating controls by effort, license requirement, and effect, and both export print-ready client reports.
+The offline build resolves takeover chains transitively. It follows one app planting a credential on another, ownership of an app registration or service principal, group membership and role-assignable group paths, and GDAP reach across customer tenants. Paths that run through a PIM-eligible role, on the app itself or on a role-assignable group, get their own PIM-gated verdict: still a path, ranked below standing access.
+
+Credential findings come with the reason each one fired. The strongest is a credential sitting on a vendor-owned or Microsoft-owned service principal in your tenant, which is the persistence pattern from the ConnectWise incident. A "changed since" date highlights every credential created on or after it. An allowlist in the source can quiet the cross-tenant rule for credentials you have reviewed; keep it short.
+
+Both builds rank compensating controls by effort, license requirement, and effect, and both export print-ready client reports. The offline build's tenant export treats its own output like a password vault, and the Clear data button wipes a loaded export from the page when you're done.
 
 ## What it doesn't see
 
-Blast Radius reasons about configuration, not activity. It cannot tell you what an attacker actually did, and unless Microsoft Graph activity logs were enabled before the incident, directory reads leave nothing for anyone else to find either. The tenant export captures active directory role assignments, not PIM-eligible ones, so an app that can activate into a role looks less dangerous than it is. It does not read Conditional Access policy state, Azure RBAC on subscriptions, or app-role and access-package assignments that flow through non-role-assignable groups. Treat every verdict as a floor on the blast radius, never a ceiling.
+Blast Radius reasons about configuration, not activity. It cannot tell you what an attacker actually did, and unless Microsoft Graph activity logs were enabled before the incident, directory reads leave nothing for anyone else to find either. The "changed since" filter only sees credentials, because role assignments, group memberships, and consent grants carry no creation date in the export; use the directory audit log for those. The export does not read Conditional Access policy state, Azure RBAC on subscriptions, or app-role and access-package assignments that flow through non-role-assignable groups. Treat every verdict as a floor on the blast radius, never a ceiling.
 
 The knowledge base carries a date. The tool shows its age in the header and stamps it on every exported report, and it warns once the knowledge base is more than 90 days old. A verdict is only as current as the research behind it.
 
