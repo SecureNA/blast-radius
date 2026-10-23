@@ -3,8 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; frame-src 'self' about:; base-uri 'none'; form-action 'none'">
-<title>Blast Radius: Entra app permission analyzer</title>
+<title>Blast Radius — Entra app permission analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 /* ============================ TOKENS ============================ */
 :root {
@@ -389,6 +391,8 @@ h1 .sub { color: var(--text-faint); font-weight: 500; }
 .abadge.disabled { background: var(--panel-2); color: var(--text-faint); border: 1px solid var(--line); }
 .abadge.role { background: #241a2e; color: #c79ae0; border: 1px solid #3c2a4a; }
 .abadge.group { background: #2a2416; color: #d8c27a; border: 1px solid #45391d; }
+.abadge.pim { background: #261f12; color: var(--caution); border: 1px solid #413312; }
+.abadge.owner { background: #1b2733; color: #9cc3e0; border: 1px solid #2b4257; }
 .abadge.cleared { background: var(--contained-bg); color: var(--contained); border: 1px solid #1d4038; }
 .abadge.cred { background: var(--takeover-bg); color: var(--takeover); border: 1px solid #4a2227; }
 .app-verdict { font-size: 10.5px; font-weight: 700; letter-spacing: 0.02em; padding: 4px 9px; border-radius: 20px; flex: none; }
@@ -441,6 +445,30 @@ h1 .sub { color: var(--text-faint); font-weight: 500; }
 .xb-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .xb-note { font-size: 12px; color: var(--contained); margin-top: 8px; min-height: 2px; }
 
+/* ============================ SAFETY UI ============================ */
+.crown-jewel { display: flex; gap: 11px; align-items: flex-start; background: var(--caution-bg);
+  border: 1px solid #3a2f17; border-left: 3px solid var(--caution); border-radius: var(--radius-sm);
+  padding: 12px 14px; margin-bottom: 16px; font-size: 12.5px; line-height: 1.5; color: #e7d6b0; }
+.crown-jewel .cj-ic { font-size: 15px; flex: none; }
+.crown-jewel b { color: #f4e4bd; }
+.since-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 14px 0 4px; }
+.since-row label { font-size: 12.5px; color: var(--text-dim); font-weight: 600; }
+.since-input { font: inherit; font-size: 13px; color: var(--text); background: var(--ink-2);
+  border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 7px 10px; color-scheme: dark; }
+.since-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
+.since-hint { font-size: 11.5px; color: var(--text-faint); flex: 1; min-width: 180px; line-height: 1.4; }
+.tenant-buttons { display: flex; gap: 10px; align-items: stretch; margin-top: 18px; }
+.tenant-buttons .analyze-btn { margin-top: 0; flex: 1; }
+.clear-btn { font: inherit; font-weight: 600; font-size: 14px; color: var(--text-dim); cursor: pointer;
+  background: var(--ink-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0 18px; }
+.clear-btn:hover { color: var(--takeover); border-color: #4a2227; }
+.clear-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.blindspot { display: flex; gap: 10px; align-items: flex-start; background: var(--ink-2);
+  border: 1px solid var(--line-soft); border-radius: var(--radius-sm); padding: 12px 14px; margin-top: 16px;
+  font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+.blindspot .bs-ic { flex: none; color: var(--text-faint); }
+.blindspot b { color: var(--text-dim); }
+
 /* ============================ PARTNER / MSP ============================ */
 .masterkey { border: 1px solid var(--line-soft); border-radius: var(--radius-sm); background: var(--ink-2);
   padding: 14px 16px; margin-bottom: 9px; }
@@ -487,7 +515,6 @@ h1 .sub { color: var(--text-faint); font-weight: 500; }
     <div class="brand">
       <div class="mark" aria-hidden="true"></div>
       <h1>Blast Radius <span class="sub">· Entra app permission analyzer</span></h1>
-      <span id="kb-stamp" style="font-size:12px;color:var(--text-faint);margin-left:12px;white-space:nowrap"></span>
     </div>
     <div class="aud-toggle" role="group" aria-label="Audience">
       <button id="aud-tech" aria-pressed="true">Tech view</button>
@@ -498,7 +525,7 @@ h1 .sub { color: var(--text-faint); font-weight: 500; }
   <div class="incident">
     <div>
       <b>Why this exists.</b> In October 2026 a stolen vendor credential let a Microsoft 365 backup app's identity
-      be used to sign in to more than 160 tenants, and in at least one a related management app made itself Global Administrator
+      be used across hundreds of tenants, and in at least one a related management app made itself Global Administrator
       and planted secrets on other apps. Most teams had no idea an app could do that. This tool turns a permission list
       into a plain answer: if this app gets popped, what can the attacker reach, and can they take over the tenant?
       <a href="https://www.huntress.com/blog/vendor-credential-enables-unauthorized-access" target="_blank" rel="noopener">Read the Huntress writeup →</a>
@@ -507,7 +534,7 @@ h1 .sub { color: var(--text-faint); font-weight: 500; }
 
   <div class="build-banner public">
     <span class="bb-ic">🌐</span>
-    <div><b>Public build: the before-you-consent lookup.</b> Pick or paste the permissions an app is requesting and see
+    <div><b>Public build — the before-you-consent lookup.</b> Pick or paste the permissions an app is requesting and see
       its blast radius, before you grant anything. This is an analysis aid, not an audit: <b>“no known path” means
       nothing in the knowledge base matched, not that an app is safe.</b> The Whole-tenant and Partner/MSP analyzers live
       in the offline build, which runs on your own machine so client exports stay off public URLs.</div>
@@ -542,7 +569,7 @@ h1 .sub { color: var(--text-faint); font-weight: 500; }
       </div>
 
       <!-- app type -->
-      <span class="field-label">App type (this changes which controls work)</span>
+      <span class="field-label">App type — this changes which controls work</span>
       <div class="apptype">
         <label>
           <input type="radio" name="apptype" value="multi-tenant" checked>
@@ -569,7 +596,7 @@ h1 .sub { color: var(--text-faint); font-weight: 500; }
       <!-- PASTE mode -->
       <div id="mode-paste" style="display:none">
         <span class="field-label">Paste service-principal sign-in detail, an audit export, or a Graph permissions dump</span>
-        <textarea class="paste-area" id="paste" placeholder="Paste JSON or text here. The tool scans for known permission strings and role names, e.g. &quot;RoleManagement.ReadWrite.Directory&quot;, &quot;Mail.ReadWrite&quot;, &quot;Global Administrator&quot;."></textarea>
+        <textarea class="paste-area" id="paste" placeholder="Paste JSON or text here. The tool scans for known permission strings and role names — e.g. &quot;RoleManagement.ReadWrite.Directory&quot;, &quot;Mail.ReadWrite&quot;, &quot;Global Administrator&quot;."></textarea>
         <button class="script-toggle" id="script-toggle">Need a read-only script to generate this? Show it ▾</button>
         <div class="script-box" id="script-box">
           <pre id="script-text"></pre>
@@ -600,7 +627,7 @@ h1 .sub { color: var(--text-faint); font-weight: 500; }
 
 <script>
 // ============================================================================
-// Blast Radius: Entra app permission knowledge base
+// Blast Radius — Entra app permission knowledge base
 // ----------------------------------------------------------------------------
 // Sources:
 //  - Microsoft Graph permissions reference (graphpermissions.merill.net)
@@ -610,7 +637,7 @@ h1 .sub { color: var(--text-faint); font-weight: 500; }
 //  - Huntress ConnectWise/SkyKick writeup (Oct 2026)
 //
 // This is a knowledge base, not gospel. "No known path" means nothing in this
-// list matched, never that an app is safe. Designed to live as community-
+// list matched — never that an app is safe. Designed to live as community-
 // editable data (the escalation tiers mirror the azure-tiering project, so it
 // can be re-synced as that research updates).
 //
@@ -623,20 +650,33 @@ h1 .sub { color: var(--text-faint); font-weight: 500; }
 // guid: Graph appRoleId where known, so exports carrying only GUIDs still match.
 // ============================================================================
 
-const KB_VERSION = "2026.10.20b";
+const KB_VERSION = "2026.10.22";
+const TOOL_VERSION = "0.9.0";
+// Classification changes are security-sensitive. A wrong "no known path" is worse
+// than a wrong "exposed". Record notable KB changes here so a defender can tell
+// whether a verdict from a prior run still holds:
+//  2026.10.22 (v0.9): cross-tenant credential detection (allowlist-as-data),
+//    PIM-eligible modeled as a distinct gated state (not flattened to direct),
+//    ownership paths (human vs service-principal owner) scored distinctly,
+//    credential source (app registration vs service principal) surfaced.
 
-// Knowledge-base freshness. KB_VERSION is YYYY.MM.DD plus an optional revision letter.
-const KB_STALE_DAYS = 90;
-const KB_DATE = new Date(KB_VERSION.slice(0, 10).replace(/\./g, "-") + "T00:00:00");
-function kbAgeDays() { return Math.max(0, Math.floor((Date.now() - KB_DATE.getTime()) / 86400000)); }
-function kbIsStale() { return kbAgeDays() > KB_STALE_DAYS; }
-function kbDateLabel() { return KB_DATE.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }); }
-function kbAgeLabel() { const d = kbAgeDays(); return `updated ${kbDateLabel()}, ${d} day${d === 1 ? "" : "s"} old`; }
+// Microsoft's first-party app-owner tenant. A credential on a Microsoft-owned
+// service principal is expected; on any other external vendor SP it is not.
+const MICROSOFT_FIRST_PARTY_TENANT = "f8cdef31-a31e-4b4a-93e4-5f571e91255a";
 
+// Cross-tenant credential allowlist — DATA, not code, so it is auditable and
+// overridable. Attackers read source too; a static hidden allowlist is a blind
+// spot. Each entry says WHY it is trusted. Match on appOwnerOrganizationId or appId.
+// Keep this minimal; when in doubt, do NOT allowlist — let the flag fire and let
+// a human overrule it. (Microsoft first-party is handled separately above.)
+const CROSS_TENANT_CRED_ALLOWLIST = [
+  // { ownerOrg: "<tenant-guid>", reason: "Our managed MSP automation tenant — expected." },
+  // { appId: "<app-guid>", reason: "Reviewed 2026-10-22: vendor requires a tenant-side cert by design." },
+];
 
 const PERMISSIONS = [
 
-  // ===== TIER 0: DIRECT escalation (azure-tiering "Direct") =====
+  // ===== TIER 0 — DIRECT escalation (azure-tiering "Direct") =====
   {
     id: "RoleManagement.ReadWrite.Directory", guid: "9e3f62cf-ca93-4989-b6ce-bf83c28f9fe8",
     label: "Read and write all directory RBAC settings", api: "Graph",
@@ -668,7 +708,7 @@ const PERMISSIONS = [
     id: "Policy.ReadWrite.ConditionalAccess", guid: "01c0a623-fc9b-48e9-b794-0756f8e8f067",
     label: "Read and write Conditional Access policies", api: "Graph",
     escalation: "direct", tier: 1,
-    plain: "Can rewrite the sign-in rules that protect everyone (turn off MFA, carve out exceptions), opening the door to account takeover tenant-wide.",
+    plain: "Can rewrite the sign-in rules that protect everyone — turn off MFA, carve out exceptions — opening the door to account takeover tenant-wide.",
     canRead: ["policy"], canWrite: ["policy"],
     escalationNote: "Disables or excludes MFA/CA enforcement, enabling takeover of admin accounts.",
     tags: ["policy","conditional-access"],
@@ -710,15 +750,15 @@ const PERMISSIONS = [
     tags: ["user-write"],
   },
 
-  // ===== TIER 0: CONDITIONAL / INDIRECT (azure-tiering "Indirect") =====
+  // ===== TIER 0 — CONDITIONAL / INDIRECT (azure-tiering "Indirect") =====
   {
     id: "AppRoleAssignment.ReadWrite.All", guid: "06b708a9-e830-4db3-a914-8e69da51d44f",
     label: "Manage app permission grants and app role assignments", api: "Graph",
     escalation: "conditional", tier: 1,
-    plain: "Can grant applications more permissions, including granting itself the one that leads straight to Global Admin. One hop from takeover.",
+    plain: "Can grant applications more permissions — including granting itself the one that leads straight to Global Admin. One hop from takeover.",
     canRead: ["directory"], canWrite: ["app-permissions"],
     escalationNote: "Grants itself RoleManagement.ReadWrite.Directory, then promotes to Global Admin (the SkyKick-class move). Only 'indirect' because of that one extra grant.",
-    conditionalOn: "Nothing beyond the Graph service principal. The extra grant is always available, which is why many treat this as effectively direct.",
+    conditionalOn: "Nothing beyond the Graph service principal — the extra grant is always available, which is why many treat this as effectively direct.",
     tags: ["app-permissions","consent"],
   },
   {
@@ -727,7 +767,7 @@ const PERMISSIONS = [
     escalation: "conditional", tier: 1,
     plain: "Can add a secret or certificate to ANY app in the tenant and then act as that app. Its real power equals the single most privileged app it can hijack.",
     canRead: ["directory","apps"], canWrite: ["apps","app-credentials"],
-    escalationNote: "Plants credentials on a higher-privileged app (or one holding a directory role) and inherits its access. This is the persistence move from the SkyKick incident.",
+    escalationNote: "Plants credentials on a higher-privileged app (or one holding a directory role) and inherits its access — the persistence move from the SkyKick incident.",
     conditionalOn: "Whether any app in the tenant holds RoleManagement.ReadWrite.Directory, a privileged directory role, or similar.",
     tags: ["app-credentials","persistence"],
   },
@@ -755,7 +795,7 @@ const PERMISSIONS = [
     id: "Group.ReadWrite.All", guid: "62a82d76-70ea-41e2-9197-370581804d09",
     label: "Read and write all groups", api: "Graph",
     escalation: "conditional", tier: 1,
-    plain: "Can change group membership across the tenant. As bad as whatever the most powerful group controls: app roles, licensing, SharePoint/Teams access, or (if role-assignable) a directory role.",
+    plain: "Can change group membership across the tenant. As bad as whatever the most powerful group controls — app roles, licensing, SharePoint/Teams access, or (if role-assignable) a directory role.",
     canRead: ["groups","directory"], canWrite: ["groups"],
     escalationNote: "Adds itself or a principal to a role-assignable group, or a group that gates app/data access.",
     conditionalOn: "What the tenant's groups actually gate (role-assignable groups, access packages, app assignment).",
@@ -895,7 +935,7 @@ const PERMISSIONS = [
     id: "DeviceManagementConfiguration.ReadWrite.All", guid: "9241abd9-d0e6-425a-bd4f-47ba86e767a4",
     label: "Read and write Intune device configuration", api: "Graph",
     escalation: "conditional", tier: 1,
-    plain: "Can push device configuration and scripts to managed endpoints. That means code execution on users' machines, which can harvest admin credentials.",
+    plain: "Can push device configuration and scripts to managed endpoints — code execution on users' machines, which can harvest admin credentials.",
     canRead: ["devices"], canWrite: ["devices"],
     escalationNote: "Deploys a malicious script/policy to admin endpoints to steal credentials or tokens.",
     conditionalOn: "Presence of managed devices used by privileged users.",
@@ -912,7 +952,7 @@ const PERMISSIONS = [
     tags: ["intune","code-exec"],
   },
 
-  // ===== TIER 2: broad data / sensitive, no known direct escalation =====
+  // ===== TIER 2 — broad data / sensitive, no known direct escalation =====
   {
     id: "Mail.ReadWrite", guid: "e2a3a72e-5f79-4c64-b1b1-878b674786c9",
     label: "Read and write mail in all mailboxes", api: "Graph",
@@ -938,7 +978,7 @@ const PERMISSIONS = [
     id: "MailboxSettings.ReadWrite", guid: "6931bccd-447a-43d1-b442-00a195474933",
     label: "Read and write all mailbox settings", api: "Graph",
     escalation: "none", tier: 2,
-    plain: "Can change mailbox rules, for example to auto-forward every email to an outside address. Classic silent data theft.",
+    plain: "Can change mailbox rules — e.g. auto-forward every email to an outside address. Classic silent data theft.",
     canRead: ["mail"], canWrite: ["mail"], tags: ["mail"],
   },
   {
@@ -959,7 +999,7 @@ const PERMISSIONS = [
     id: "Sites.ReadWrite.All", guid: "9492366f-7969-46a4-8d15-ed1a20078fff",
     label: "Read and write all SharePoint sites", api: "Graph",
     escalation: "none", tier: 2,
-    plain: "Full read/write to every SharePoint site, which is often where the most sensitive shared documents live.",
+    plain: "Full read/write to every SharePoint site — often where the most sensitive shared documents live.",
     canRead: ["files"], canWrite: ["files"], tags: ["files"],
   },
   {
@@ -1013,7 +1053,7 @@ const PERMISSIONS = [
     id: "Calendars.ReadWrite", guid: "ef54d2bf-783f-4e0f-bca1-3210c0444d99",
     label: "Read and write calendars in all mailboxes", api: "Graph",
     escalation: "none", tier: 2,
-    plain: "Can read and change calendars across the tenant, including meeting contents, attendees, and scheduling.",
+    plain: "Can read and change calendars across the tenant — meeting contents, attendees, and scheduling.",
     canRead: ["mail"], canWrite: ["mail"], tags: ["mail"],
   },
   {
@@ -1027,16 +1067,16 @@ const PERMISSIONS = [
     id: "Directory.Read.All", guid: "7ab1d382-f21e-4acd-a863-ba3e13f7da61",
     label: "Read directory data", api: "Graph",
     escalation: "none", tier: 2,
-    plain: "Can read the whole directory: every user, group, role, and app. Recon gold, and these reads never reach the Entra audit log.",
+    plain: "Can read the whole directory: every user, group, role, and app. Recon gold — and these reads leave NO audit trail.",
     canRead: ["directory","users","groups","apps","roles"], canWrite: [],
-    note: "Graph directory reads are not in the Entra audit log. Unless Microsoft Graph activity logs were already streaming to Log Analytics or a SIEM, you cannot tell after the fact what was enumerated.",
+    note: "Graph directory reads are not logged — you cannot tell after the fact what was enumerated.",
     tags: ["directory-read","stealthy"],
   },
   {
     id: "People.Read.All", guid: "b528084d-ad10-4598-8b93-929746b4d7d6",
     label: "Read all users' relevant people lists", api: "Graph",
     escalation: "none", tier: 3,
-    plain: "Reads org relationship graphs: who works with whom. Targeting aid.",
+    plain: "Reads org relationship graphs — who works with whom. Targeting aid.",
     canRead: ["users"], canWrite: [], tags: ["directory-read"],
   },
   {
@@ -1050,11 +1090,11 @@ const PERMISSIONS = [
     id: "AuditLog.Read.All", guid: "b0afded3-3588-46d8-8b3d-9842eff778da",
     label: "Read all audit log data", api: "Graph",
     escalation: "none", tier: 2,
-    plain: "Can read sign-in and audit logs, which lets an attacker see what defenders can see, and learn patterns to blend in.",
+    plain: "Can read sign-in and audit logs — lets an attacker see what defenders can see, and learn patterns to blend in.",
     canRead: ["directory"], canWrite: [], tags: ["directory-read","recon"],
   },
 
-  // ===== TIER 3: scoped / lower-impact =====
+  // ===== TIER 3 — scoped / lower-impact =====
   {
     id: "Sites.Selected", guid: "883ea226-0bf2-4a8f-9f9d-92c9162a727d",
     label: "Access only specific SharePoint sites", api: "Graph",
@@ -1115,13 +1155,13 @@ const ROLES = [
     plain: "Controls federation/sync config. Can establish trust that forges tokens for any user.",
     escalationNote: "Configures malicious federation to impersonate admins." },
   { id: "Intune Administrator", escalation: "direct", tier: 1,
-    plain: "Can push scripts and configuration to all managed devices. That means code execution on endpoints, including admins' machines.",
+    plain: "Can push scripts and configuration to all managed devices — code execution on endpoints, including admins' machines.",
     escalationNote: "Deploys a script to a Global Admin's managed device to steal tokens/credentials." },
   { id: "Partner Tier2 Support", escalation: "direct", tier: 1,
     plain: "Legacy high-privilege support role that can modify Global Admins. Rarely needed, dangerous if present.",
     escalationNote: "Can reset/modify Global Admin accounts." },
   { id: "Security Administrator", escalation: "conditional", tier: 1,
-    plain: "Broad security control. Can change security policy, including some Conditional Access, weakening defenses.",
+    plain: "Broad security control — can change security policy, including some Conditional Access, weakening defenses.",
     escalationNote: "Weakens CA/security policy to enable account takeover.",
     conditionalOn: "Follow-on takeover once defenses are lowered." },
   { id: "User Administrator", escalation: "conditional", tier: 2,
@@ -1129,8 +1169,8 @@ const ROLES = [
     escalationNote: "Resets a user who owns a privileged app, then uses that app.",
     conditionalOn: "Whether a resettable non-admin controls a privileged app or group." },
   { id: "Exchange Administrator", escalation: "conditional", tier: 2,
-    plain: "Full control of Exchange Online: all mailboxes, transport rules, mail flow.",
-    escalationNote: "Total control of email, which is leverage for fraud and reset-based takeover, but not a directory takeover by itself.",
+    plain: "Full control of Exchange Online: all mailboxes, transport rules, mail flow. The role the SkyKick apps self-assigned.",
+    escalationNote: "Total control of email — leverage for fraud and reset-based takeover — but not a directory takeover by itself.",
     conditionalOn: "What email access enables (password resets via mail, BEC)." },
   { id: "SharePoint Administrator", escalation: "conditional", tier: 2,
     plain: "Full control of SharePoint and OneDrive content across the tenant.",
@@ -1190,19 +1230,19 @@ const VENDOR_PRESETS = [
 const CONTROLS = [
   { name: "Disable the app when it isn't actively needed",
     effort: 1, license: "Free", stops: "Prevents", appliesSingle: true, appliesVendor: true,
-    detail: "Set 'Enabled for users to sign-in' to No on the enterprise app. For a vendor app you can't rotate the credential, so disabling is your fastest kill switch. Disable, don't delete. Deleting drops consent and you'd have to re-grant." },
+    detail: "Set 'Enabled for users to sign-in' to No on the enterprise app. For a vendor app you can't rotate the credential, so disabling is your fastest kill switch. Disable, don't delete — deleting drops consent and you'd have to re-grant." },
   { name: "Remove directory roles from the service principal",
     effort: 1, license: "Free", stops: "Limits", appliesSingle: true, appliesVendor: true,
     detail: "An app almost never needs a directory role like Exchange Admin or Global Admin. Check Roles and administrators for the service principal and strip anything you didn't deliberately grant. This directly shrinks blast radius." },
   { name: "Remove the app from Conditional Access exclusions",
     effort: 1, license: "Entra P1", stops: "Prevents", appliesSingle: true, appliesVendor: true,
-    detail: "If a CA policy excludes this app (e.g. from a location block), attacker infrastructure using the app's credential is excluded too. Review and remove unnecessary exclusions. Huntress flagged this specifically." },
+    detail: "If a CA policy excludes this app (e.g. from a location block), attacker infrastructure using the app's credential is excluded too. Review and remove unnecessary exclusions — Huntress flagged this specifically." },
   { name: "Require admin consent for new app permissions",
     effort: 1, license: "Free", stops: "Prevents", appliesSingle: true, appliesVendor: true,
-    detail: "Turn off user consent so no one can quietly grant a new app broad access. Forces every grant through an admin review, the single best habit for avoiding the next over-permissioned app." },
+    detail: "Turn off user consent so no one can quietly grant a new app broad access. Forces every grant through an admin review — the single best habit for avoiding the next over-permissioned app." },
   { name: "Audit app credentials for unexpected secrets/certs",
     effort: 2, license: "Free", stops: "Detects", appliesSingle: true, appliesVendor: true,
-    detail: "List secrets and certificates on every app registration and remove anything you didn't create, especially long-dated ones. Disabling an app does NOT remove planted credentials." },
+    detail: "List secrets and certificates on every app registration and remove anything you didn't create — especially long-dated ones (the SkyKick persistence secrets were set to expire in 2028). Disabling an app does NOT remove planted credentials." },
   { name: "Restrict who holds Application / Cloud Application Administrator",
     effort: 2, license: "Free", stops: "Prevents", appliesSingle: true, appliesVendor: true,
     detail: "These roles can add credentials to any app. Fewer holders = fewer ways to plant a secret on a privileged app. Put them behind PIM if you have P2." },
@@ -1232,7 +1272,7 @@ const CONTROLS = [
     detail: "Make Application Administrator, Privileged Role Administrator and similar eligible-only through PIM, with approval and MFA. Shrinks the window in which a compromised admin identity can add app credentials." },
   { name: "Conditional Access for workload identities",
     effort: 3, license: "Workload ID Premium", stops: "Prevents", appliesSingle: true, appliesVendor: false,
-    detail: "Restricts which IPs a service principal may sign in from. Powerful, but it only covers single-tenant service principals registered in YOUR tenant. It would NOT have stopped the SkyKick vendor app, whose credential lives in the vendor's tenant. Don't buy this expecting vendor-app coverage." },
+    detail: "Restricts which IPs a service principal may sign in from. Powerful — but only covers single-tenant service principals registered in YOUR tenant. It would NOT have stopped the SkyKick vendor app, whose credential lives in the vendor's tenant. Don't buy this expecting vendor-app coverage." },
   { name: "Entra ID Protection risky workload identities",
     effort: 2, license: "Workload ID Premium", stops: "Detects", appliesSingle: true, appliesVendor: true,
     detail: "Flags service principals showing risky behavior (anomalous sign-ins, leaked credentials). Detection aid, not prevention." },
@@ -1251,7 +1291,7 @@ const PARTNER_CONTROLS = [
     detail: "Legacy DAP granted the partner standing Global Admin on every customer. A single DAP relationship is a master key to all of them. Migrate to GDAP and remove DAP entirely." },
   { name: "Phishing-resistant MFA for every admin in the partner tenant",
     effort: 3, license: "Entra P1", stops: "Prevents",
-    detail: "The whole GDAP graph hangs off partner-tenant identities. Enforce FIDO2/certificate-based MFA on every account in a GDAP security group. Shared admin accounts and MFA-code vaults destroy this. Use named identities." },
+    detail: "The whole GDAP graph hangs off partner-tenant identities. Enforce FIDO2/certificate-based MFA on every account in a GDAP security group. Shared admin accounts and MFA-code vaults destroy this — use named identities." },
   { name: "Put GDAP security-group membership behind PIM for Groups",
     effort: 3, license: "Entra P2", stops: "Limits",
     detail: "Make membership of the GDAP-linked groups eligible-only, with approval and MFA on activation. A standing member is standing access into every mapped customer; JIT shrinks that to minutes when a tech actually needs it." },
@@ -1270,7 +1310,7 @@ const PARTNER_CONTROLS = [
 ];
 
 const VENDOR_QUESTIONS = [
-  "How is the application credential stored on your side: a certificate in an HSM, or a plain client secret?",
+  "How is the application credential stored on your side — a certificate in an HSM, or a plain client secret?",
   "If your credential is compromised, can you rotate it without my involvement, and how fast?",
   "Do you support scoped permissions like Sites.Selected for SharePoint or Exchange RBAC for Applications for mailboxes?",
   "Why does the app need any Entra directory role? Can it work without one?",
@@ -1282,7 +1322,7 @@ const VENDOR_QUESTIONS = [
 </script>
 <script>
 // ============================================================================
-// Blast Radius: application logic (browser-only, no network calls)
+// Blast Radius — application logic (browser-only, no network calls)
 // Single-app mode + whole-tenant export analyzer with transitive takeover paths.
 // ============================================================================
 "use strict";
@@ -1321,9 +1361,6 @@ const ROLE_TEMPLATE = {
   "e00e864a-17c5-4a4b-9c06-f5b95a8d5bd8": "Partner Tier2 Support",
 };
 
-// Microsoft's own tenant id (first-party app owner), used for credential-on-MS-app flagging
-const MICROSOFT_TENANT = "f8cdef31-a31e-4b4a-93e4-5f571e91255a";
-
 const REACH_LABELS = {
   mail:        { name: "Email", tech: "All mailboxes (read/write/send)", biz: "Every inbox in the company, including executives and finance." },
   files:       { name: "Files", tech: "OneDrive & SharePoint files", biz: "Shared files and documents across the business." },
@@ -1338,7 +1375,7 @@ const REACH_LABELS = {
   "app-credentials": { name: "App credentials", tech: "Secrets & certificates on apps", biz: "The passwords other apps use to log in." },
   "auth-methods":{ name: "Sign-in methods", tech: "Everyone's MFA / auth methods", biz: "How people prove who they are when logging in." },
   policy:      { name: "Security policies", tech: "Conditional Access rules", biz: "The rules that decide who can sign in and how." },
-  devices:     { name: "Managed devices", tech: "Intune device config / scripts", biz: "Company laptops and phones. The app can push software or scripts to them." },
+  devices:     { name: "Managed devices", tech: "Intune device config / scripts", biz: "Company laptops and phones — can push software or scripts to them." },
   federation:  { name: "Federation/domains", tech: "Domains & trust config", biz: "The trust settings that verify every login." },
   self:        { name: "Self", tech: "Own profile only", biz: "Just the signed-in user's own basic profile." },
 };
@@ -1503,12 +1540,12 @@ function verdictBlock(a) {
   const el = document.createElement("div");
   el.className = "verdict sev-" + a.sev;
   const cfg = {
-    direct:      { badge: "YES: DIRECT", title: "This app can take over the tenant.",
+    direct:      { badge: "YES — DIRECT", title: "This app can take over the tenant.",
                    sub: "One or more permissions lead to Global Administrator (or equivalent) in a step or two, on their own." },
-    conditional: { badge: "YES: CONDITIONAL", title: "This app can likely take over the tenant.",
+    conditional: { badge: "YES — CONDITIONAL", title: "This app can likely take over the tenant.",
                    sub: "Escalation is possible, but it depends on what else exists in the tenant (other apps, role-assignable groups)." },
     none:        { badge: "NO KNOWN PATH", title: "No known takeover path from these permissions.",
-                   sub: "Nothing here maps to a known Global Admin escalation. That is not the same as “safe.” Reach can still be large." },
+                   sub: "Nothing here maps to a known Global Admin escalation. That is not the same as “safe” — reach can still be large." },
   }[a.sev];
   let why = "";
   const reasons = a.sev === "direct" ? a.directReasons : a.sev === "conditional" ? a.condReasons : [];
@@ -1516,7 +1553,7 @@ function verdictBlock(a) {
     why = `<div class="verdict-why">`;
     reasons.slice(0, 6).forEach((r, i) => {
       const cond = r.conditionalOn ? ` <span style="color:var(--text-faint)">(depends on: ${r.conditionalOn})</span>` : "";
-      why += `<div class="step"><span class="n">${i+1}</span><span><code>${r.id}</code>: ${r.escalationNote || r.plain}${audience==="tech"?cond:""}</span></div>`;
+      why += `<div class="step"><span class="n">${i+1}</span><span><code>${r.id}</code> — ${r.escalationNote || r.plain}${audience==="tech"?cond:""}</span></div>`;
     });
     why += `</div>`;
   } else if (a.sev === "none") {
@@ -1543,7 +1580,7 @@ function readoutBlock(a) {
   else if (a.reads.has("files")) worst = "reach shared files";
   else if (a.reads.has("directory")) worst = "map the whole directory";
   const bizLine = a.sev !== "none"
-    ? `If this app's credential is stolen, an attacker can act with its full access across ${scopeWord}, and from there escalate to complete control of the tenant, which means resetting staff, reading anything, and locking you out.`
+    ? `If this app's credential is stolen, an attacker can act with its full access across ${scopeWord} — and from there escalate to complete control of the tenant, which means resetting staff, reading anything, and locking you out.`
     : `If this app's credential is stolen, an attacker can use its access across ${scopeWord}${worst ? ` to ${worst}` : ""}. No known path to full admin takeover from these permissions, but the data reach below still matters.`;
   const techLine = `App type: <span class="owner">${a.appType}</span>. Worst-case holder of a stolen credential gets app-only access (no user, no MFA prompt) to everything below${a.appType==="multi-tenant" ? ", in every consented tenant" : ""}.`;
 
@@ -1554,14 +1591,14 @@ function readoutBlock(a) {
     const desc = audience === "tech" ? `${lab.tech}${canW ? " · read+write" : " · read"}` : lab.biz;
     reachCards += `<div class="reach ${hot?"hot":""}"><div class="rn"><span class="ic"></span>${lab.name}</div><div class="rd">${desc}</div></div>`;
   });
-  if (!reachCards) reachCards = `<div class="reach"><div class="rn"><span class="ic"></span>Minimal</div><div class="rd">${audience==="tech"?"Own profile / sign-in only":"Just basic sign-in. Very low reach."}</div></div>`;
+  if (!reachCards) reachCards = `<div class="reach"><div class="rn"><span class="ic"></span>Minimal</div><div class="rd">${audience==="tech"?"Own profile / sign-in only":"Just basic sign-in — very low reach."}</div></div>`;
 
   const vis = [
     { ic: "✓", cls: "yes", label: "Can you see the app sign in from a strange IP?",
-      val: audience==="tech" ? "Yes, in service principal sign-in logs, but that tab needs Entra P1 and isn't the default user sign-in view." : "Only if you have the right license turned on (Entra P1)." },
+      val: audience==="tech" ? "Yes, in service principal sign-in logs — but that tab needs Entra P1 and isn't the default user sign-in view." : "Only if you have the right license turned on (Entra P1)." },
     { ic: a.hasStealthyRead ? "✗" : "~", cls: a.hasStealthyRead ? "no" : "part", label: "Can you see what it read?",
       val: a.hasStealthyRead
-        ? (audience==="tech" ? "Only if Microsoft Graph activity logs were already enabled. Directory reads never appear in the Entra audit log." : "Usually not. Directory look-ups are invisible after the fact unless a specific log was turned on beforehand.")
+        ? (audience==="tech" ? "No. Directory reads via Microsoft Graph leave no audit record at all." : "No — directory look-ups are invisible after the fact.")
         : (audience==="tech" ? "Partly. Some data reads aren't logged; mailbox/file access may appear in unified audit if enabled." : "Partly, at best.") },
     { ic: "~", cls: "part", label: "How far back can you look?",
       val: audience==="tech" ? "Default Entra log retention is short (7–30 days). Longer needs P1 + Log Analytics/SIEM export." : "Usually only a few weeks unless you pay to keep logs longer." },
@@ -1635,16 +1672,16 @@ function disclaimerBlock() {
   el.className = "disclaimer";
   el.innerHTML = `<b>Read this.</b> This is a reasoning aid, not an audit. The escalation logic is built from public research
     (SpecterOps/BloodHound, Horizon3, Maester, Emilien Socchi's azure-tiering) and Microsoft's permission docs, and it only
-    knows the paths in its knowledge base (v${KB_VERSION}). “No known path” means nothing in that list matched, never that an
+    knows the paths in its knowledge base (v${KB_VERSION}). “No known path” means nothing in that list matched — never that an
     app is safe. Real blast radius also depends on objects this tool can't always see (role-assignable groups, app ownership,
     Azure RBAC, GDAP). Verify against your tenant and current Microsoft documentation before making decisions. A backup or
-    management app legitimately needs broad access. The goal is informed acceptance with controls in place, not panic.`;
+    management app legitimately needs broad access — the goal is informed acceptance with controls in place, not panic.`;
   return el;
 }
 
 
 // ============================================================================
-// EXPORTABLE REPORT: browser-only, self-contained, print/PDF-ready
+// EXPORTABLE REPORT — browser-only, self-contained, print/PDF-ready
 // ============================================================================
 function exportBar(mode) {
   const el = document.createElement("div");
@@ -1695,19 +1732,18 @@ function printReport(mode) {
     doc.open(); doc.write(html); doc.close();
     setTimeout(() => {
       try { frame.contentWindow.focus(); frame.contentWindow.print(); }
-      catch (e) { if (note) note.textContent = "Printing was blocked here. Use Download report instead, then print the file."; }
+      catch (e) { if (note) note.textContent = "Printing was blocked here — use Download report instead, then print the file."; }
       setTimeout(() => frame.remove(), 1000);
     }, 300);
   } catch (e) {
     frame.remove();
-    if (note) note.textContent = "Printing was blocked here. Use Download report instead, then print the file.";
+    if (note) note.textContent = "Printing was blocked here — use Download report instead, then print the file.";
   }
 }
 
 // ---- report HTML builder (light theme, system fonts, print CSS) ----
 function reportHead(title) {
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(title)}</title>
 <style>
@@ -1771,7 +1807,7 @@ function reportHead(title) {
 </style></head><body>
 <div class="toolbar">
   <button class="primary" onclick="window.print()">Print / Save as PDF</button>
-  <span class="tnote">Opens your browser's print dialog. Choose “Save as PDF” as the destination.</span>
+  <span class="tnote">Opens your browser's print dialog — choose “Save as PDF” as the destination.</span>
 </div>
 <div class="page">`;
 }
@@ -1784,7 +1820,7 @@ function reportHeader(title, scopeLine) {
   return `<header class="rpt">
     <div class="mark"><span class="dot"></span> Blast Radius</div>
     <h1>${escapeHtml(title)}</h1>
-    <div class="meta">${scopeLine}<br>${forLine}${sep}${byLine}${(forLine||byLine)?"<br>":""}<b>Generated:</b> ${now.toLocaleString()} &nbsp;·&nbsp; knowledge base v${KB_VERSION} (${kbAgeLabel()} when generated)</div>${kbIsStale() ? `<div class="meta" style="color:var(--amber)"><b>Note:</b> this knowledge base was more than ${KB_STALE_DAYS} days old when the report was generated. Newer escalation research may not be reflected.</div>` : ""}
+    <div class="meta">${scopeLine}<br>${forLine}${sep}${byLine}${(forLine||byLine)?"<br>":""}<b>Generated:</b> ${now.toLocaleString()} &nbsp;·&nbsp; knowledge base v${KB_VERSION}</div>
   </header>`;
 }
 
@@ -1792,18 +1828,18 @@ function reportFoot() {
   return `<div class="foot"><b>Methodology &amp; limitations.</b> This assessment reasons about Microsoft Entra application
     permissions, directory roles, group memberships and delegated-admin (GDAP) relationships using a knowledge base
     (v${KB_VERSION}) built from public research (SpecterOps/BloodHound, Horizon3, Maester, Emilien Socchi's azure-tiering)
-    and Microsoft documentation. It analyzes configuration and structural reach, not activity. It does not confirm what an
+    and Microsoft documentation. It analyzes configuration and structural reach, not activity — it does not confirm what an
     attacker did or could do in practice, and “no known path” means nothing in the knowledge base matched, not that a target
     is safe. Escalation and blast-radius findings depend on the accuracy and completeness of the exported data. Verify against
-    the live tenant and current Microsoft guidance before acting. Prepared with Blast Radius, an analysis aid, not a
+    the live tenant and current Microsoft guidance before acting. Prepared with Blast Radius, an analysis aid — not a
     substitute for a full security audit.</div></div></body></html>`;
 }
 
 function verdictCfgReport(sev) {
   return {
     direct: { badge:"CAN REACH GLOBAL ADMIN", t:"Full tenant takeover is possible.", s:"One or more permissions or roles lead to Global Administrator (or equivalent)." },
-    conditional: { badge:"LIKELY: CONDITIONAL", t:"Takeover is likely, depending on tenant configuration.", s:"Escalation depends on other objects (apps, role-assignable groups)." },
-    none: { badge:"NO KNOWN PATH", t:"No known takeover path from what was analyzed.", s:"Not the same as safe. Data reach can still be significant." },
+    conditional: { badge:"LIKELY — CONDITIONAL", t:"Takeover is likely, depending on tenant configuration.", s:"Escalation depends on other objects (apps, role-assignable groups)." },
+    none: { badge:"NO KNOWN PATH", t:"No known takeover path from what was analyzed.", s:"Not the same as safe — data reach can still be significant." },
   }[sev];
 }
 
@@ -1836,7 +1872,7 @@ function reportSingle(title) {
   const reasons = a.sev === "direct" ? a.directReasons : a.sev === "conditional" ? a.condReasons : [];
   if (reasons.length) {
     html += `<h3 class="sub">Why</h3><ul class="clean">`;
-    reasons.slice(0,8).forEach(r => html += `<li><b>${escapeHtml(r.id)}</b>: ${escapeHtml(r.escalationNote || r.plain)}${r.conditionalOn?` <span class="muted">(depends on: ${escapeHtml(r.conditionalOn)})</span>`:""}</li>`);
+    reasons.slice(0,8).forEach(r => html += `<li><b>${escapeHtml(r.id)}</b> — ${escapeHtml(r.escalationNote || r.plain)}${r.conditionalOn?` <span class="muted">(depends on: ${escapeHtml(r.conditionalOn)})</span>`:""}</li>`);
     html += `</ul>`;
   }
 
@@ -1848,7 +1884,7 @@ function reportSingle(title) {
   // detection
   html += `<h2 class="sec">Detection reality</h2><ul class="clean">
     <li>App sign-ins from unexpected IPs are visible only in service-principal sign-in logs, which require Entra P1 and are a separate view from user sign-ins.</li>
-    <li>${a.hasStealthyRead ? "Directory reads via Microsoft Graph never appear in the Entra audit log. Unless Microsoft Graph activity logs were already enabled, you cannot tell after the fact what this app read." : "Some reads are not logged; mailbox and file access may appear in the unified audit log if it is enabled."}</li>
+    <li>${a.hasStealthyRead ? "Directory reads via Microsoft Graph leave no audit record — you cannot tell after the fact what this app read." : "Some reads are not logged; mailbox and file access may appear in the unified audit log if it is enabled."}</li>
     <li>Default Entra log retention is short (7–30 days); longer retention needs P1 plus a Log Analytics/SIEM export.</li></ul>`;
 
   // controls
@@ -1898,13 +1934,13 @@ function reportTenant(title) {
   // key findings: GA-reaching apps
   const ga = d.sps.filter(s => s.finalSev === "direct").sort((a,b)=>b.riskScore-a.riskScore);
   if (ga.length) {
-    html += `<h2 class="sec">Priority findings: apps that can reach Global Admin</h2>`;
+    html += `<h2 class="sec">Priority findings — apps that can reach Global Admin</h2>`;
     ga.slice(0,12).forEach(sp => {
       let why = "";
       if (sp.groupProof) { const g = sp.groupProof.group; why = `${sp.groupProof.how} the ${g.roleAssignable?"role-assignable ":""}group “${escapeHtml(g.name)}”, which holds a privileged role`; }
       else if (sp.confirmedViaChain && sp.gaProof) why = `can plant a credential on the more privileged app “${escapeHtml(sp.gaProof.name)}” and inherit it`;
       else { const rr = (sp.analysis.directReasons[0]||sp.perms.find(p=>p.id==="AppRoleAssignment.ReadWrite.All")); why = rr ? `holds ${escapeHtml(rr.id)}` : (sp.roleObjs.find(x=>x.escalation==="direct") ? `holds the ${escapeHtml(sp.roleObjs.find(x=>x.escalation==="direct").id)} role` : "holds a direct-escalation permission"); }
-      html += `<div class="finding red"><b>${escapeHtml(sp.name)}</b> <span class="muted">(${sp.appType==="multi-tenant"?"vendor":"own"}${sp.enabled?"":", disabled"})</span>: ${why}.</div>`;
+      html += `<div class="finding red"><b>${escapeHtml(sp.name)}</b> <span class="muted">(${sp.appType==="multi-tenant"?"vendor":"own"}${sp.enabled?"":", disabled"})</span> — ${why}.</div>`;
     });
   }
 
@@ -1917,8 +1953,8 @@ function reportTenant(title) {
     html += `<tr><td><b>${escapeHtml(sp.name)}</b><br><span class="muted" style="font-size:11px">${escapeHtml(sp.appId||"")}</span></td>` +
       `<td>${sp.appType==="multi-tenant"?"vendor":"own"}</td>` +
       `<td><span class="pill ${v}">${vl}</span></td>` +
-      `<td>${sp.roleObjs.map(x=>escapeHtml(x.id)).join(", ")||"None"}</td>` +
-      `<td>${flags.join(", ")||"None"}</td></tr>`;
+      `<td>${sp.roleObjs.map(x=>escapeHtml(x.id)).join(", ")||"—"}</td>` +
+      `<td>${flags.join(", ")||"—"}</td></tr>`;
   });
   html += `</tbody></table>`;
 
@@ -1955,9 +1991,9 @@ function reportPartner(title) {
 
   // master keys
   if (d.keyList.length) {
-    html += `<h2 class="sec">Master keys: highest-value targets</h2>`;
+    html += `<h2 class="sec">Master keys — highest-value targets</h2>`;
     html += `<table><thead><tr><th>Partner group</th><th>Customers reached</th><th>Fully takeable</th><th>Members</th></tr></thead><tbody>`;
-    d.keyList.forEach(k => { html += `<tr><td><b>${escapeHtml(k.name)}</b></td><td>${k.total}</td><td>${k.directCount?`<span class="pill direct">${k.directCount}</span>`:"0"}</td><td class="muted">${k.memberNames.map(escapeHtml).join(", ")||"None"}</td></tr>`; });
+    d.keyList.forEach(k => { html += `<tr><td><b>${escapeHtml(k.name)}</b></td><td>${k.total}</td><td>${k.directCount?`<span class="pill direct">${k.directCount}</span>`:"0"}</td><td class="muted">${k.memberNames.map(escapeHtml).join(", ")||"—"}</td></tr>`; });
     html += `</tbody></table>`;
   }
 
@@ -1966,7 +2002,7 @@ function reportPartner(title) {
   if (full.length) {
     html += `<h2 class="sec">Customers fully takeable from the partner</h2>`;
     html += `<table><thead><tr><th>Customer</th><th>Roles reachable</th><th>Via groups</th><th>Status</th></tr></thead><tbody>`;
-    full.forEach(c => { html += `<tr><td><b>${escapeHtml(c.name)}</b></td><td>${c.roles.map(x=>`<span class="tag ${/global|privileged|dap/i.test(x)?"hot":""}">${escapeHtml(x)}</span>`).join("")}</td><td>${c.viaGroups.map(escapeHtml).join(", ")||"None"}</td><td>${escapeHtml(c.relstat)}</td></tr>`; });
+    full.forEach(c => { html += `<tr><td><b>${escapeHtml(c.name)}</b></td><td>${c.roles.map(x=>`<span class="tag ${/global|privileged|dap/i.test(x)?"hot":""}">${escapeHtml(x)}</span>`).join("")}</td><td>${c.viaGroups.map(escapeHtml).join(", ")||"—"}</td><td>${escapeHtml(c.relstat)}</td></tr>`; });
     html += `</tbody></table>`;
   }
 
@@ -1976,12 +2012,12 @@ function reportPartner(title) {
   const sevRank = s => s==="direct"?2:s==="conditional"?1:0;
   d.custList.slice().sort((a,b)=>sevRank(b.sev)-sevRank(a.sev)).forEach(c => {
     const vl = c.sev==="direct"?"Full takeover":c.sev==="conditional"?"Scoped admin":"Low";
-    html += `<tr><td><b>${escapeHtml(c.name)}</b></td><td><span class="pill ${c.sev}">${vl}</span></td><td>${c.roles.map(escapeHtml).join(", ")||"None"}</td><td>${escapeHtml(c.relstat)}</td></tr>`;
+    html += `<tr><td><b>${escapeHtml(c.name)}</b></td><td><span class="pill ${c.sev}">${vl}</span></td><td>${c.roles.map(escapeHtml).join(", ")||"—"}</td><td>${escapeHtml(c.relstat)}</td></tr>`;
   });
   html += `</tbody></table>`;
 
   // controls
-  html += `<h2 class="sec">Partner hardening: priorities</h2>`;
+  html += `<h2 class="sec">Partner hardening — priorities</h2>`;
   const eff = ["","toggle","quick","moderate","project"];
   html += `<table><thead><tr><th>Control</th><th>Effort</th><th>License</th><th>Effect</th></tr></thead><tbody>`;
   PARTNER_CONTROLS.slice().sort((x,y)=>x.effort-y.effort).forEach(c => html += `<tr><td><b>${escapeHtml(c.name)}</b><br><span class="muted">${escapeHtml(c.detail)}</span></td><td>${eff[c.effort]}</td><td>${escapeHtml(c.license)}</td><td>${escapeHtml(c.stops)}</td></tr>`);
@@ -2013,7 +2049,7 @@ function switchInput(mode) {
   document.getElementById("mode-paste").style.display = mode==="paste" ? "" : "none";
 }
 function switchScope(s) {
-  // in the public build, tenant/partner panels don't exist; ignore those scopes
+  // in the public build, tenant/partner panels don't exist — ignore those scopes
   if ((s === "tenant" && !has("tenant-mode")) || (s === "partner" && !has("partner-mode"))) return;
   scope = s;
   const press = (id, v) => { const el = $id(id); if (el) el.setAttribute("aria-pressed", v); };
@@ -2084,9 +2120,11 @@ function init() {
     const tpaste = $id("tenant-paste"), tbtn = $id("tanalyze");
     on("tenant-paste", "input", () => tbtn.disabled = !tpaste.value.trim());
     on("tanalyze", "click", () => doTenantAnalyze(tpaste.value));
+    on("tenant-since", "change", () => { if (tpaste.value.trim()) doTenantAnalyze(tpaste.value); });
     on("tscript-toggle", "click", () => $id("tscript-box").classList.toggle("open"));
     on("tcopy-script", "click", e => copyText(TENANT_SCRIPT, e.target));
     on("load-sample", "click", () => { tpaste.value = JSON.stringify(SAMPLE_TENANT, null, 2); tbtn.disabled = false; doTenantAnalyze(tpaste.value); });
+    on("tclear", "click", () => clearData("tenant"));
     wireFileDrop("tenant-file", "file-drop", "tenant-paste", "tanalyze", "file-label", doTenantAnalyze, "tenant-parse-note");
   }
 
@@ -2099,20 +2137,13 @@ function init() {
     on("pscript-toggle", "click", () => $id("pscript-box").classList.toggle("open"));
     on("pcopy-script", "click", e => copyText(PARTNER_SCRIPT, e.target));
     on("pload-sample", "click", () => { ppaste.value = JSON.stringify(SAMPLE_PARTNER, null, 2); pbtn.disabled = false; doPartnerAnalyze(ppaste.value); });
+    on("pclear", "click", () => clearData("partner"));
     wireFileDrop("partner-file", "pfile-drop", "partner-paste", "panalyze", "pfile-label", doPartnerAnalyze, "partner-parse-note");
-  }
-
-  const ks = $id("kb-stamp");
-  if (ks) {
-    ks.textContent = kbIsStale()
-      ? `Knowledge base ${kbAgeLabel()}. Check for a newer build.`
-      : `Knowledge base ${kbAgeLabel()}`;
-    if (kbIsStale()) ks.style.color = "#f59e0b";
   }
 
   const fm = $id("footer-meta");
   if (fm) fm.textContent =
-    `knowledge base v${KB_VERSION} (${kbAgeLabel()}) · ${PERMISSIONS.length} permissions · ${ROLES.length} roles · ${CONTROLS.length + PARTNER_CONTROLS.length} controls · runs entirely in your browser`;
+    `Blast Radius v${typeof TOOL_VERSION!=="undefined"?TOOL_VERSION:"?"} · knowledge base v${KB_VERSION} · ${PERMISSIONS.length} permissions · ${ROLES.length} roles · ${CONTROLS.length + PARTNER_CONTROLS.length} controls · no network calls — verify in dev tools`;
 }
 
 function wireFileDrop(inputId, dropId, pasteId, btnId, labelId, analyzeFn, noteId) {
