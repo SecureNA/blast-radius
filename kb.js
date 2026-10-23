@@ -1,5 +1,5 @@
 // ============================================================================
-// Blast Radius — Entra app permission knowledge base
+// Blast Radius: Entra app permission knowledge base
 // ----------------------------------------------------------------------------
 // Sources:
 //  - Microsoft Graph permissions reference (graphpermissions.merill.net)
@@ -9,7 +9,7 @@
 //  - Huntress ConnectWise/SkyKick writeup (Oct 2026)
 //
 // This is a knowledge base, not gospel. "No known path" means nothing in this
-// list matched — never that an app is safe. Designed to live as community-
+// list matched, never that an app is safe. Designed to live as community-
 // editable data (the escalation tiers mirror the azure-tiering project, so it
 // can be re-synced as that research updates).
 //
@@ -22,8 +22,17 @@
 // guid: Graph appRoleId where known, so exports carrying only GUIDs still match.
 // ============================================================================
 
-const KB_VERSION = "2026.10.22";
-const TOOL_VERSION = "0.9.0";
+const KB_VERSION = "2026.10.22b";
+
+// Knowledge-base freshness. KB_VERSION is YYYY.MM.DD plus an optional revision letter.
+const KB_STALE_DAYS = 90;
+const KB_DATE = new Date(KB_VERSION.slice(0, 10).replace(/\./g, "-") + "T00:00:00");
+function kbAgeDays() { return Math.max(0, Math.floor((Date.now() - KB_DATE.getTime()) / 86400000)); }
+function kbIsStale() { return kbAgeDays() > KB_STALE_DAYS; }
+function kbDateLabel() { return KB_DATE.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }); }
+function kbAgeLabel() { const d = kbAgeDays(); return `updated ${kbDateLabel()}, ${d} day${d === 1 ? "" : "s"} old`; }
+
+const TOOL_VERSION = "0.9.1";
 // Classification changes are security-sensitive. A wrong "no known path" is worse
 // than a wrong "exposed". Record notable KB changes here so a defender can tell
 // whether a verdict from a prior run still holds:
@@ -31,24 +40,29 @@ const TOOL_VERSION = "0.9.0";
 //    PIM-eligible modeled as a distinct gated state (not flattened to direct),
 //    ownership paths (human vs service-principal owner) scored distinctly,
 //    credential source (app registration vs service principal) surfaced.
+//  2026.10.22b (v0.9.1): PIM-eligible role-assignable groups modeled; app
+//    registration owners exported; Windows PowerShell 5.1 credential dates parsed;
+//    unverified incident details removed from the Exchange Administrator and
+//    credential-audit entries; Graph read-logging claims corrected.
 
-// Microsoft's first-party app-owner tenant. A credential on a Microsoft-owned
-// service principal is expected; on any other external vendor SP it is not.
+// Microsoft's first-party app-owner tenant. Credentials on Microsoft-owned service
+// principals skip the generic vendor rule and get their own high-severity flag
+// below, because a customer-added credential there is rarer still.
 const MICROSOFT_FIRST_PARTY_TENANT = "f8cdef31-a31e-4b4a-93e4-5f571e91255a";
 
-// Cross-tenant credential allowlist — DATA, not code, so it is auditable and
+// Cross-tenant credential allowlist: DATA, not code, so it is auditable and
 // overridable. Attackers read source too; a static hidden allowlist is a blind
 // spot. Each entry says WHY it is trusted. Match on appOwnerOrganizationId or appId.
-// Keep this minimal; when in doubt, do NOT allowlist — let the flag fire and let
+// Keep this minimal; when in doubt, do NOT allowlist; let the flag fire and let
 // a human overrule it. (Microsoft first-party is handled separately above.)
 const CROSS_TENANT_CRED_ALLOWLIST = [
-  // { ownerOrg: "<tenant-guid>", reason: "Our managed MSP automation tenant — expected." },
+  // { ownerOrg: "<tenant-guid>", reason: "Our managed MSP automation tenant, expected." },
   // { appId: "<app-guid>", reason: "Reviewed 2026-10-22: vendor requires a tenant-side cert by design." },
 ];
 
 const PERMISSIONS = [
 
-  // ===== TIER 0 — DIRECT escalation (azure-tiering "Direct") =====
+  // ===== TIER 0: DIRECT escalation (azure-tiering "Direct") =====
   {
     id: "RoleManagement.ReadWrite.Directory", guid: "9e3f62cf-ca93-4989-b6ce-bf83c28f9fe8",
     label: "Read and write all directory RBAC settings", api: "Graph",
@@ -80,7 +94,7 @@ const PERMISSIONS = [
     id: "Policy.ReadWrite.ConditionalAccess", guid: "01c0a623-fc9b-48e9-b794-0756f8e8f067",
     label: "Read and write Conditional Access policies", api: "Graph",
     escalation: "direct", tier: 1,
-    plain: "Can rewrite the sign-in rules that protect everyone — turn off MFA, carve out exceptions — opening the door to account takeover tenant-wide.",
+    plain: "Can rewrite the sign-in rules that protect everyone (turn off MFA, carve out exceptions), opening the door to account takeover tenant-wide.",
     canRead: ["policy"], canWrite: ["policy"],
     escalationNote: "Disables or excludes MFA/CA enforcement, enabling takeover of admin accounts.",
     tags: ["policy","conditional-access"],
@@ -122,15 +136,15 @@ const PERMISSIONS = [
     tags: ["user-write"],
   },
 
-  // ===== TIER 0 — CONDITIONAL / INDIRECT (azure-tiering "Indirect") =====
+  // ===== TIER 0: CONDITIONAL / INDIRECT (azure-tiering "Indirect") =====
   {
     id: "AppRoleAssignment.ReadWrite.All", guid: "06b708a9-e830-4db3-a914-8e69da51d44f",
     label: "Manage app permission grants and app role assignments", api: "Graph",
     escalation: "conditional", tier: 1,
-    plain: "Can grant applications more permissions — including granting itself the one that leads straight to Global Admin. One hop from takeover.",
+    plain: "Can grant applications more permissions, including granting itself the one that leads straight to Global Admin. One hop from takeover.",
     canRead: ["directory"], canWrite: ["app-permissions"],
     escalationNote: "Grants itself RoleManagement.ReadWrite.Directory, then promotes to Global Admin (the SkyKick-class move). Only 'indirect' because of that one extra grant.",
-    conditionalOn: "Nothing beyond the Graph service principal — the extra grant is always available, which is why many treat this as effectively direct.",
+    conditionalOn: "Nothing beyond the Graph service principal. The extra grant is always available, which is why many treat this as effectively direct.",
     tags: ["app-permissions","consent"],
   },
   {
@@ -139,7 +153,7 @@ const PERMISSIONS = [
     escalation: "conditional", tier: 1,
     plain: "Can add a secret or certificate to ANY app in the tenant and then act as that app. Its real power equals the single most privileged app it can hijack.",
     canRead: ["directory","apps"], canWrite: ["apps","app-credentials"],
-    escalationNote: "Plants credentials on a higher-privileged app (or one holding a directory role) and inherits its access — the persistence move from the SkyKick incident.",
+    escalationNote: "Plants credentials on a higher-privileged app (or one holding a directory role) and inherits its access. This is the persistence move from the SkyKick incident.",
     conditionalOn: "Whether any app in the tenant holds RoleManagement.ReadWrite.Directory, a privileged directory role, or similar.",
     tags: ["app-credentials","persistence"],
   },
@@ -167,7 +181,7 @@ const PERMISSIONS = [
     id: "Group.ReadWrite.All", guid: "62a82d76-70ea-41e2-9197-370581804d09",
     label: "Read and write all groups", api: "Graph",
     escalation: "conditional", tier: 1,
-    plain: "Can change group membership across the tenant. As bad as whatever the most powerful group controls — app roles, licensing, SharePoint/Teams access, or (if role-assignable) a directory role.",
+    plain: "Can change group membership across the tenant. As bad as whatever the most powerful group controls: app roles, licensing, SharePoint/Teams access, or (if role-assignable) a directory role.",
     canRead: ["groups","directory"], canWrite: ["groups"],
     escalationNote: "Adds itself or a principal to a role-assignable group, or a group that gates app/data access.",
     conditionalOn: "What the tenant's groups actually gate (role-assignable groups, access packages, app assignment).",
@@ -307,7 +321,7 @@ const PERMISSIONS = [
     id: "DeviceManagementConfiguration.ReadWrite.All", guid: "9241abd9-d0e6-425a-bd4f-47ba86e767a4",
     label: "Read and write Intune device configuration", api: "Graph",
     escalation: "conditional", tier: 1,
-    plain: "Can push device configuration and scripts to managed endpoints — code execution on users' machines, which can harvest admin credentials.",
+    plain: "Can push device configuration and scripts to managed endpoints. That means code execution on users' machines, which can harvest admin credentials.",
     canRead: ["devices"], canWrite: ["devices"],
     escalationNote: "Deploys a malicious script/policy to admin endpoints to steal credentials or tokens.",
     conditionalOn: "Presence of managed devices used by privileged users.",
@@ -324,7 +338,7 @@ const PERMISSIONS = [
     tags: ["intune","code-exec"],
   },
 
-  // ===== TIER 2 — broad data / sensitive, no known direct escalation =====
+  // ===== TIER 2: broad data / sensitive, no known direct escalation =====
   {
     id: "Mail.ReadWrite", guid: "e2a3a72e-5f79-4c64-b1b1-878b674786c9",
     label: "Read and write mail in all mailboxes", api: "Graph",
@@ -350,7 +364,7 @@ const PERMISSIONS = [
     id: "MailboxSettings.ReadWrite", guid: "6931bccd-447a-43d1-b442-00a195474933",
     label: "Read and write all mailbox settings", api: "Graph",
     escalation: "none", tier: 2,
-    plain: "Can change mailbox rules — e.g. auto-forward every email to an outside address. Classic silent data theft.",
+    plain: "Can change mailbox rules, for example to auto-forward every email to an outside address. Classic silent data theft.",
     canRead: ["mail"], canWrite: ["mail"], tags: ["mail"],
   },
   {
@@ -371,7 +385,7 @@ const PERMISSIONS = [
     id: "Sites.ReadWrite.All", guid: "9492366f-7969-46a4-8d15-ed1a20078fff",
     label: "Read and write all SharePoint sites", api: "Graph",
     escalation: "none", tier: 2,
-    plain: "Full read/write to every SharePoint site — often where the most sensitive shared documents live.",
+    plain: "Full read/write to every SharePoint site, which is often where the most sensitive shared documents live.",
     canRead: ["files"], canWrite: ["files"], tags: ["files"],
   },
   {
@@ -425,7 +439,7 @@ const PERMISSIONS = [
     id: "Calendars.ReadWrite", guid: "ef54d2bf-783f-4e0f-bca1-3210c0444d99",
     label: "Read and write calendars in all mailboxes", api: "Graph",
     escalation: "none", tier: 2,
-    plain: "Can read and change calendars across the tenant — meeting contents, attendees, and scheduling.",
+    plain: "Can read and change calendars across the tenant, including meeting contents, attendees, and scheduling.",
     canRead: ["mail"], canWrite: ["mail"], tags: ["mail"],
   },
   {
@@ -439,16 +453,16 @@ const PERMISSIONS = [
     id: "Directory.Read.All", guid: "7ab1d382-f21e-4acd-a863-ba3e13f7da61",
     label: "Read directory data", api: "Graph",
     escalation: "none", tier: 2,
-    plain: "Can read the whole directory: every user, group, role, and app. Recon gold — and these reads leave NO audit trail.",
+    plain: "Can read the whole directory: every user, group, role, and app. Recon gold, and these reads never reach the Entra audit log.",
     canRead: ["directory","users","groups","apps","roles"], canWrite: [],
-    note: "Graph directory reads are not logged — you cannot tell after the fact what was enumerated.",
+    note: "Graph directory reads are not in the Entra audit log. Unless Microsoft Graph activity logs were already streaming to Log Analytics or a SIEM, you cannot tell after the fact what was enumerated.",
     tags: ["directory-read","stealthy"],
   },
   {
     id: "People.Read.All", guid: "b528084d-ad10-4598-8b93-929746b4d7d6",
     label: "Read all users' relevant people lists", api: "Graph",
     escalation: "none", tier: 3,
-    plain: "Reads org relationship graphs — who works with whom. Targeting aid.",
+    plain: "Reads org relationship graphs: who works with whom. Targeting aid.",
     canRead: ["users"], canWrite: [], tags: ["directory-read"],
   },
   {
@@ -462,11 +476,11 @@ const PERMISSIONS = [
     id: "AuditLog.Read.All", guid: "b0afded3-3588-46d8-8b3d-9842eff778da",
     label: "Read all audit log data", api: "Graph",
     escalation: "none", tier: 2,
-    plain: "Can read sign-in and audit logs — lets an attacker see what defenders can see, and learn patterns to blend in.",
+    plain: "Can read sign-in and audit logs, which lets an attacker see what defenders can see, and learn patterns to blend in.",
     canRead: ["directory"], canWrite: [], tags: ["directory-read","recon"],
   },
 
-  // ===== TIER 3 — scoped / lower-impact =====
+  // ===== TIER 3: scoped / lower-impact =====
   {
     id: "Sites.Selected", guid: "883ea226-0bf2-4a8f-9f9d-92c9162a727d",
     label: "Access only specific SharePoint sites", api: "Graph",
@@ -527,13 +541,13 @@ const ROLES = [
     plain: "Controls federation/sync config. Can establish trust that forges tokens for any user.",
     escalationNote: "Configures malicious federation to impersonate admins." },
   { id: "Intune Administrator", escalation: "direct", tier: 1,
-    plain: "Can push scripts and configuration to all managed devices — code execution on endpoints, including admins' machines.",
+    plain: "Can push scripts and configuration to all managed devices. That means code execution on endpoints, including admins' machines.",
     escalationNote: "Deploys a script to a Global Admin's managed device to steal tokens/credentials." },
   { id: "Partner Tier2 Support", escalation: "direct", tier: 1,
     plain: "Legacy high-privilege support role that can modify Global Admins. Rarely needed, dangerous if present.",
     escalationNote: "Can reset/modify Global Admin accounts." },
   { id: "Security Administrator", escalation: "conditional", tier: 1,
-    plain: "Broad security control — can change security policy, including some Conditional Access, weakening defenses.",
+    plain: "Broad security control. Can change security policy, including some Conditional Access, weakening defenses.",
     escalationNote: "Weakens CA/security policy to enable account takeover.",
     conditionalOn: "Follow-on takeover once defenses are lowered." },
   { id: "User Administrator", escalation: "conditional", tier: 2,
@@ -541,8 +555,8 @@ const ROLES = [
     escalationNote: "Resets a user who owns a privileged app, then uses that app.",
     conditionalOn: "Whether a resettable non-admin controls a privileged app or group." },
   { id: "Exchange Administrator", escalation: "conditional", tier: 2,
-    plain: "Full control of Exchange Online: all mailboxes, transport rules, mail flow. The role the SkyKick apps self-assigned.",
-    escalationNote: "Total control of email — leverage for fraud and reset-based takeover — but not a directory takeover by itself.",
+    plain: "Full control of Exchange Online: all mailboxes, transport rules, mail flow.",
+    escalationNote: "Total control of email, which is leverage for fraud and reset-based takeover, but not a directory takeover by itself.",
     conditionalOn: "What email access enables (password resets via mail, BEC)." },
   { id: "SharePoint Administrator", escalation: "conditional", tier: 2,
     plain: "Full control of SharePoint and OneDrive content across the tenant.",
@@ -602,19 +616,19 @@ const VENDOR_PRESETS = [
 const CONTROLS = [
   { name: "Disable the app when it isn't actively needed",
     effort: 1, license: "Free", stops: "Prevents", appliesSingle: true, appliesVendor: true,
-    detail: "Set 'Enabled for users to sign-in' to No on the enterprise app. For a vendor app you can't rotate the credential, so disabling is your fastest kill switch. Disable, don't delete — deleting drops consent and you'd have to re-grant." },
+    detail: "Set 'Enabled for users to sign-in' to No on the enterprise app. For a vendor app you can't rotate the credential, so disabling is your fastest kill switch. Disable, don't delete. Deleting drops consent and you'd have to re-grant." },
   { name: "Remove directory roles from the service principal",
     effort: 1, license: "Free", stops: "Limits", appliesSingle: true, appliesVendor: true,
     detail: "An app almost never needs a directory role like Exchange Admin or Global Admin. Check Roles and administrators for the service principal and strip anything you didn't deliberately grant. This directly shrinks blast radius." },
   { name: "Remove the app from Conditional Access exclusions",
     effort: 1, license: "Entra P1", stops: "Prevents", appliesSingle: true, appliesVendor: true,
-    detail: "If a CA policy excludes this app (e.g. from a location block), attacker infrastructure using the app's credential is excluded too. Review and remove unnecessary exclusions — Huntress flagged this specifically." },
+    detail: "If a CA policy excludes this app (e.g. from a location block), attacker infrastructure using the app's credential is excluded too. Review and remove unnecessary exclusions. Huntress flagged this specifically." },
   { name: "Require admin consent for new app permissions",
     effort: 1, license: "Free", stops: "Prevents", appliesSingle: true, appliesVendor: true,
-    detail: "Turn off user consent so no one can quietly grant a new app broad access. Forces every grant through an admin review — the single best habit for avoiding the next over-permissioned app." },
+    detail: "Turn off user consent so no one can quietly grant a new app broad access. Forces every grant through an admin review, the single best habit for avoiding the next over-permissioned app." },
   { name: "Audit app credentials for unexpected secrets/certs",
     effort: 2, license: "Free", stops: "Detects", appliesSingle: true, appliesVendor: true,
-    detail: "List secrets and certificates on every app registration and remove anything you didn't create — especially long-dated ones (the SkyKick persistence secrets were set to expire in 2028). Disabling an app does NOT remove planted credentials." },
+    detail: "List secrets and certificates on every app registration and remove anything you didn't create, especially long-dated ones. Disabling an app does NOT remove planted credentials." },
   { name: "Restrict who holds Application / Cloud Application Administrator",
     effort: 2, license: "Free", stops: "Prevents", appliesSingle: true, appliesVendor: true,
     detail: "These roles can add credentials to any app. Fewer holders = fewer ways to plant a secret on a privileged app. Put them behind PIM if you have P2." },
@@ -644,7 +658,7 @@ const CONTROLS = [
     detail: "Make Application Administrator, Privileged Role Administrator and similar eligible-only through PIM, with approval and MFA. Shrinks the window in which a compromised admin identity can add app credentials." },
   { name: "Conditional Access for workload identities",
     effort: 3, license: "Workload ID Premium", stops: "Prevents", appliesSingle: true, appliesVendor: false,
-    detail: "Restricts which IPs a service principal may sign in from. Powerful — but only covers single-tenant service principals registered in YOUR tenant. It would NOT have stopped the SkyKick vendor app, whose credential lives in the vendor's tenant. Don't buy this expecting vendor-app coverage." },
+    detail: "Restricts which IPs a service principal may sign in from. Powerful, but it only covers single-tenant service principals registered in YOUR tenant. It would NOT have stopped the SkyKick vendor app, whose credential lives in the vendor's tenant. Don't buy this expecting vendor-app coverage." },
   { name: "Entra ID Protection risky workload identities",
     effort: 2, license: "Workload ID Premium", stops: "Detects", appliesSingle: true, appliesVendor: true,
     detail: "Flags service principals showing risky behavior (anomalous sign-ins, leaked credentials). Detection aid, not prevention." },
@@ -663,7 +677,7 @@ const PARTNER_CONTROLS = [
     detail: "Legacy DAP granted the partner standing Global Admin on every customer. A single DAP relationship is a master key to all of them. Migrate to GDAP and remove DAP entirely." },
   { name: "Phishing-resistant MFA for every admin in the partner tenant",
     effort: 3, license: "Entra P1", stops: "Prevents",
-    detail: "The whole GDAP graph hangs off partner-tenant identities. Enforce FIDO2/certificate-based MFA on every account in a GDAP security group. Shared admin accounts and MFA-code vaults destroy this — use named identities." },
+    detail: "The whole GDAP graph hangs off partner-tenant identities. Enforce FIDO2/certificate-based MFA on every account in a GDAP security group. Shared admin accounts and MFA-code vaults destroy this. Use named identities." },
   { name: "Put GDAP security-group membership behind PIM for Groups",
     effort: 3, license: "Entra P2", stops: "Limits",
     detail: "Make membership of the GDAP-linked groups eligible-only, with approval and MFA on activation. A standing member is standing access into every mapped customer; JIT shrinks that to minutes when a tech actually needs it." },
@@ -682,7 +696,7 @@ const PARTNER_CONTROLS = [
 ];
 
 const VENDOR_QUESTIONS = [
-  "How is the application credential stored on your side — a certificate in an HSM, or a plain client secret?",
+  "How is the application credential stored on your side: a certificate in an HSM, or a plain client secret?",
   "If your credential is compromised, can you rotate it without my involvement, and how fast?",
   "Do you support scoped permissions like Sites.Selected for SharePoint or Exchange RBAC for Applications for mailboxes?",
   "Why does the app need any Entra directory role? Can it work without one?",

@@ -1,5 +1,5 @@
 // ============================================================================
-// Blast Radius — application logic (browser-only, no network calls)
+// Blast Radius: application logic (browser-only, no network calls)
 // Single-app mode + whole-tenant export analyzer with transitive takeover paths.
 // ============================================================================
 "use strict";
@@ -52,7 +52,7 @@ const REACH_LABELS = {
   "app-credentials": { name: "App credentials", tech: "Secrets & certificates on apps", biz: "The passwords other apps use to log in." },
   "auth-methods":{ name: "Sign-in methods", tech: "Everyone's MFA / auth methods", biz: "How people prove who they are when logging in." },
   policy:      { name: "Security policies", tech: "Conditional Access rules", biz: "The rules that decide who can sign in and how." },
-  devices:     { name: "Managed devices", tech: "Intune device config / scripts", biz: "Company laptops and phones — can push software or scripts to them." },
+  devices:     { name: "Managed devices", tech: "Intune device config / scripts", biz: "Company laptops and phones. The app can push software or scripts to them." },
   federation:  { name: "Federation/domains", tech: "Domains & trust config", biz: "The trust settings that verify every login." },
   self:        { name: "Self", tech: "Own profile only", biz: "Just the signed-in user's own basic profile." },
 };
@@ -217,12 +217,12 @@ function verdictBlock(a) {
   const el = document.createElement("div");
   el.className = "verdict sev-" + a.sev;
   const cfg = {
-    direct:      { badge: "YES — DIRECT", title: "This app can take over the tenant.",
+    direct:      { badge: "YES: DIRECT", title: "This app can take over the tenant.",
                    sub: "One or more permissions lead to Global Administrator (or equivalent) in a step or two, on their own." },
-    conditional: { badge: "YES — CONDITIONAL", title: "This app can likely take over the tenant.",
+    conditional: { badge: "YES: CONDITIONAL", title: "This app can likely take over the tenant.",
                    sub: "Escalation is possible, but it depends on what else exists in the tenant (other apps, role-assignable groups)." },
     none:        { badge: "NO KNOWN PATH", title: "No known takeover path from these permissions.",
-                   sub: "Nothing here maps to a known Global Admin escalation. That is not the same as “safe” — reach can still be large." },
+                   sub: "Nothing here maps to a known Global Admin escalation. That is not the same as “safe.” Reach can still be large." },
   }[a.sev];
   let why = "";
   const reasons = a.sev === "direct" ? a.directReasons : a.sev === "conditional" ? a.condReasons : [];
@@ -230,7 +230,7 @@ function verdictBlock(a) {
     why = `<div class="verdict-why">`;
     reasons.slice(0, 6).forEach((r, i) => {
       const cond = r.conditionalOn ? ` <span style="color:var(--text-faint)">(depends on: ${r.conditionalOn})</span>` : "";
-      why += `<div class="step"><span class="n">${i+1}</span><span><code>${r.id}</code> — ${r.escalationNote || r.plain}${audience==="tech"?cond:""}</span></div>`;
+      why += `<div class="step"><span class="n">${i+1}</span><span><code>${r.id}</code>: ${r.escalationNote || r.plain}${audience==="tech"?cond:""}</span></div>`;
     });
     why += `</div>`;
   } else if (a.sev === "none") {
@@ -257,7 +257,7 @@ function readoutBlock(a) {
   else if (a.reads.has("files")) worst = "reach shared files";
   else if (a.reads.has("directory")) worst = "map the whole directory";
   const bizLine = a.sev !== "none"
-    ? `If this app's credential is stolen, an attacker can act with its full access across ${scopeWord} — and from there escalate to complete control of the tenant, which means resetting staff, reading anything, and locking you out.`
+    ? `If this app's credential is stolen, an attacker can act with its full access across ${scopeWord}, and from there escalate to complete control of the tenant, which means resetting staff, reading anything, and locking you out.`
     : `If this app's credential is stolen, an attacker can use its access across ${scopeWord}${worst ? ` to ${worst}` : ""}. No known path to full admin takeover from these permissions, but the data reach below still matters.`;
   const techLine = `App type: <span class="owner">${a.appType}</span>. Worst-case holder of a stolen credential gets app-only access (no user, no MFA prompt) to everything below${a.appType==="multi-tenant" ? ", in every consented tenant" : ""}.`;
 
@@ -268,14 +268,14 @@ function readoutBlock(a) {
     const desc = audience === "tech" ? `${lab.tech}${canW ? " · read+write" : " · read"}` : lab.biz;
     reachCards += `<div class="reach ${hot?"hot":""}"><div class="rn"><span class="ic"></span>${lab.name}</div><div class="rd">${desc}</div></div>`;
   });
-  if (!reachCards) reachCards = `<div class="reach"><div class="rn"><span class="ic"></span>Minimal</div><div class="rd">${audience==="tech"?"Own profile / sign-in only":"Just basic sign-in — very low reach."}</div></div>`;
+  if (!reachCards) reachCards = `<div class="reach"><div class="rn"><span class="ic"></span>Minimal</div><div class="rd">${audience==="tech"?"Own profile / sign-in only":"Just basic sign-in. Very low reach."}</div></div>`;
 
   const vis = [
     { ic: "✓", cls: "yes", label: "Can you see the app sign in from a strange IP?",
-      val: audience==="tech" ? "Yes, in service principal sign-in logs — but that tab needs Entra P1 and isn't the default user sign-in view." : "Only if you have the right license turned on (Entra P1)." },
+      val: audience==="tech" ? "Yes, in service principal sign-in logs, but that tab needs Entra P1 and isn't the default user sign-in view." : "Only if you have the right license turned on (Entra P1)." },
     { ic: a.hasStealthyRead ? "✗" : "~", cls: a.hasStealthyRead ? "no" : "part", label: "Can you see what it read?",
       val: a.hasStealthyRead
-        ? (audience==="tech" ? "No. Directory reads via Microsoft Graph leave no audit record at all." : "No — directory look-ups are invisible after the fact.")
+        ? (audience==="tech" ? "Only if Microsoft Graph activity logs were already enabled. Directory reads never appear in the Entra audit log." : "Usually not. Directory look-ups are invisible after the fact unless a specific log was turned on beforehand.")
         : (audience==="tech" ? "Partly. Some data reads aren't logged; mailbox/file access may appear in unified audit if enabled." : "Partly, at best.") },
     { ic: "~", cls: "part", label: "How far back can you look?",
       val: audience==="tech" ? "Default Entra log retention is short (7–30 days). Longer needs P1 + Log Analytics/SIEM export." : "Usually only a few weeks unless you pay to keep logs longer." },
@@ -349,10 +349,10 @@ function disclaimerBlock() {
   el.className = "disclaimer";
   el.innerHTML = `<b>Read this.</b> This is a reasoning aid, not an audit. The escalation logic is built from public research
     (SpecterOps/BloodHound, Horizon3, Maester, Emilien Socchi's azure-tiering) and Microsoft's permission docs, and it only
-    knows the paths in its knowledge base (v${KB_VERSION}). “No known path” means nothing in that list matched — never that an
+    knows the paths in its knowledge base (v${KB_VERSION}). “No known path” means nothing in that list matched, never that an
     app is safe. Real blast radius also depends on objects this tool can't always see (role-assignable groups, app ownership,
     Azure RBAC, GDAP). Verify against your tenant and current Microsoft documentation before making decisions. A backup or
-    management app legitimately needs broad access — the goal is informed acceptance with controls in place, not panic.`;
+    management app legitimately needs broad access. The goal is informed acceptance with controls in place, not panic.`;
   return el;
 }
 
@@ -387,17 +387,17 @@ function normalizeTenant(raw) {
     if (Array.isArray(sp.directoryRoles)) roleTokens = sp.directoryRoles.slice();
     else if (Array.isArray(sp.roles)) roleTokens = sp.roles.slice();
     else if (Array.isArray(sp.roleAssignments)) roleTokens = sp.roleAssignments.map(r => r.roleDefinitionId || r.displayName || r).filter(Boolean);
-    // PIM-ELIGIBLE roles (not active until activated — a gated, logged step)
+    // PIM-ELIGIBLE roles (not active until activated; a gated, logged step)
     let eligibleRoleTokens = [];
     if (Array.isArray(sp.eligibleRoles)) eligibleRoleTokens = sp.eligibleRoles.slice();
     else if (Array.isArray(sp.roleEligibilitySchedules)) eligibleRoleTokens = sp.roleEligibilitySchedules.map(r => r.roleDefinitionId || r.displayName || r).filter(Boolean);
 
-    // credentials — carry a `source` ("application" | "servicePrincipal") when present
+    // credentials carry a `source` ("application" | "servicePrincipal") when present
     const normCred = (c, src) => (typeof c === "object" ? { ...c, source: c.source || c.src || src } : c);
     const keyCreds = (sp.keyCredentials || []).map(c => normCred(c, undefined));
     const pwCreds  = (sp.passwordCredentials || []).map(c => normCred(c, undefined));
     const ownedAppIds = sp.ownedApps || sp.ownedApplications || [];
-    // owners of THIS sp/app — may be id strings or {id,type,displayName}
+    // owners of THIS sp/app: may be id strings or {id,type,displayName}
     const owners = (sp.owners || []).map(o => {
       if (o && typeof o === "object") return { id: o.id || o.objectId || null, type: (o.type || o.principalType || (/servicePrincipal|application/i.test(o["@odata.type"]||"") ? "servicePrincipal" : "user")), name: o.displayName || o.name || null };
       return { id: o, type: null, name: null };
@@ -438,6 +438,7 @@ function normalizeTenant(raw) {
     name: g.displayName || "(unnamed group)",
     roleAssignable: !!(g.isAssignableToRole),
     roleTokens: (g.directoryRoles || g.roles || g.assignedRoles || []).slice(),
+    eligibleTokens: (g.eligibleRoles || []).slice(),
     members: (g.members || []).map(m => (m && m.id) ? m.id : m).filter(Boolean),
     owners: (g.owners || []).map(o => (o && o.id) ? o.id : o).filter(Boolean),
   }));
@@ -452,13 +453,14 @@ function analyzeTenant(raw, opts) {
   const { tenantId, generatedAt, sps, groups } = normalizeTenant(raw);
   const now = Date.now();
   const haveGroupData = Array.isArray(groups) && groups.length > 0;
-  const sinceTs = (opts && opts.since) ? Date.parse(opts.since) : null;
+  // a bare yyyy-mm-dd parses as UTC midnight; anchor to local midnight instead
+  const sinceTs = (opts && opts.since) ? credTime(/^\d{4}-\d{2}-\d{2}$/.test(opts.since) ? opts.since + "T00:00:00" : opts.since) : null;
 
   // ---- evaluate each group's privilege level ----
   // Reality: ONLY role-assignable groups can hold Entra directory roles. A group
   // that carries a direct-escalation role is "role-privileged". Such a group's
   // membership can be changed ONLY by RoleManagement.ReadWrite.Directory (already
-  // a direct GA escalator) or by an existing owner/member — never by plain
+  // a direct GA escalator) or by an existing owner/member, never by plain
   // Group.ReadWrite.All (Microsoft protects role-assignable groups).
   const groupById = {};
   (groups || []).forEach(g => {
@@ -466,6 +468,10 @@ function analyzeTenant(raw, opts) {
     // directory roles only take effect on role-assignable groups
     g.rolePrivileged = g.roleAssignable && g.roleObjs.some(r => r.escalation === "direct");
     g.condRolePrivileged = g.roleAssignable && g.roleObjs.some(r => r.escalation === "conditional");
+    // PIM-eligible role on a role-assignable group: members (and owners, who can add
+    // themselves) reach the role only through a gated, logged activation.
+    g.roleObjsEligible = (g.eligibleTokens || []).map(resolveRole).filter(Boolean);
+    g.pimPrivileged = g.roleAssignable && g.roleObjsEligible.some(r => r.escalation === "direct");
     if (g.id) groupById[g.id] = g;
   });
 
@@ -498,7 +504,7 @@ function analyzeTenant(raw, opts) {
     // Membership => already inherits the role. Ownership => can add itself as a
     // member (owners may manage role-assignable group membership).
     // Resolve from BOTH sides: edges on the SP (memberOf/ownsGroups) and edges
-    // on the group (members/owners), matching this SP by object id OR appId —
+    // on the group (members/owners), matching this SP by object id OR appId;
     // real exports put membership on the group object.
     const idMatch = (edgeId) => edgeId === sp.id || (sp.appId && edgeId === sp.appId);
     const spMemberGroups = (sp.memberOf || []).map(id => groupById[id]).filter(Boolean)
@@ -507,6 +513,8 @@ function analyzeTenant(raw, opts) {
       .concat((groups || []).filter(g => (g.owners || []).some(idMatch)));
     sp.memberPrivGroup = spMemberGroups.find(g => g && g.rolePrivileged) || null;
     sp.ownsPrivGroup   = spOwnsGroups.find(g => g && g.rolePrivileged) || null;
+    sp.pimGroup = spMemberGroups.concat(spOwnsGroups).find(g => g && g.pimPrivileged) || null;
+    if (sp.pimGroup) sp.pimEligibleGA = true;
 
     // base: reaches Global Admin on its own (tenant-independent + already-held group roles)?
     sp.baseGA = sp.analysis.sev === "direct"
@@ -532,7 +540,7 @@ function analyzeTenant(raw, opts) {
 
   // ---- ownership paths INTO each app ----
   // Owners of an app can add a credential to it and inherit its access. For a
-  // privileged (GA-reaching) app this is a real escalation path — but a HUMAN
+  // privileged (GA-reaching) app this is a real escalation path, but a HUMAN
   // owner is a different risk class (depends on that account's security) from a
   // service-principal owner (a stealable-credential path, like app-backdoor).
   const spByAnyId = {};
@@ -542,7 +550,7 @@ function analyzeTenant(raw, opts) {
   // CANNOT reach them (Microsoft protection), so there's no "open group -> GA" path
   // to confirm from directory-role data. A non-role-assignable group can still grant
   // privilege via app-role or access-package grants, but a service-principal export
-  // doesn't carry those — so that residual stays a noted caveat, never a false confirm.
+  // doesn't carry those, so that residual stays a noted caveat, never a false confirm.
   const rolePrivGroups = (groups || []).filter(g => g.rolePrivileged);
 
   // Precompute, per SP, the set of apps it OWNS (as an owner principal). An owner
@@ -607,15 +615,15 @@ function analyzeTenant(raw, opts) {
       sp.finalSev = sp.analysis.sev;
       // Honest cleared-note: if the ONLY thing making this conditional is a
       // plain group-write permission, group data lets us clear the role-based
-      // path — those privileged groups are role-assignable and protected.
+      // path; those privileged groups are role-assignable and protected.
       if (sp.finalSev === "conditional" && haveGroupData) {
         const onlyGroupCond = sp.analysis.condReasons.length > 0 &&
           sp.analysis.condReasons.every(r => (r.tags||[]).includes("group-write"));
         if (onlyGroupCond && sp.canWriteOpenGroups) {
           const n = rolePrivGroups.length;
           sp.groupCleared = n
-            ? `Group data reviewed: the ${n} privileged group${n>1?"s":""} in this tenant ${n>1?"are":"is"} role-assignable, which plain group-write cannot modify. No confirmed directory-role path. (A non-role-assignable group could still grant access via app-role or access-package assignments — not captured in this export.)`
-            : `Group data reviewed: no group in this tenant carries a privileged directory role. (A non-role-assignable group could still grant access via app-role or access-package assignments — not captured in this export.)`;
+            ? `Group data reviewed: the ${n} privileged group${n>1?"s":""} in this tenant ${n>1?"are":"is"} role-assignable, which plain group-write cannot modify. No confirmed directory-role path. (A non-role-assignable group could still grant access via app-role or access-package assignments, which this export does not capture.)`
+            : `Group data reviewed: no group in this tenant carries a privileged directory role. (A non-role-assignable group could still grant access via app-role or access-package assignments, which this export does not capture.)`;
         }
       }
     }
@@ -637,8 +645,8 @@ function analyzeTenant(raw, opts) {
     gaViaGroup: sps.filter(s => s.reachesGA && s.groupProof).length,
     cleared: sps.filter(s => s.groupCleared).length,
     pimGa: sps.filter(s => s.viaPim).length,
-    crossTenantCreds: sps.filter(s => (s.credFlags||[]).some(f => /externally-owned|Microsoft first-party/.test(f.text))).length,
-    changedSince: sps.reduce((n, s) => n + (s.credFlags||[]).filter(f => /after the review date/.test(f.text)).length, 0),
+    crossTenantCreds: sps.filter(s => hasCrossTenantCred(s)).length,
+    changedSince: sps.reduce((n, s) => n + (s.credFlags||[]).filter(f => f.code === "since").length, 0),
     haveGroupData,
     groupCount: (groups || []).length,
     privGroups: (groups || []).filter(g => g.rolePrivileged).length,
@@ -649,6 +657,18 @@ function analyzeTenant(raw, opts) {
 
 // Returns an array of { text, sev, why } flags. sev: "high" | "med".
 // Each flag states WHY it fired so a reviewer can judge or overrule it.
+// Credential timestamps arrive as ISO strings (PowerShell 7) or "/Date(ms)/" (Windows
+// PowerShell 5.1 ConvertTo-Json). Date.parse returns NaN on the latter, which would
+// silently disable every time-based flag, so accept both.
+function credTime(v) {
+  if (v == null || v === "") return null;
+  const m = /\/Date\((-?\d+)/.exec(String(v));
+  const t = m ? Number(m[1]) : Date.parse(v);
+  return Number.isFinite(t) ? t : null;
+}
+
+// Each flag carries a stable `code`. Counters and badges match on the code, never
+// on display text, so rewording a flag can't silently zero a counter.
 function credentialFlags(sp, now, sinceTs) {
   const flags = [];
   // each credential may carry a `source`: "application" (on the app registration)
@@ -662,54 +682,65 @@ function credentialFlags(sp, now, sinceTs) {
   // --- Cross-tenant credential: the SkyKick persistence pattern in one rule ---
   // A credential sitting on an externally-owned (vendor) service principal in YOUR
   // tenant is abnormal: the vendor's credential normally lives in the vendor's
-  // tenant. Microsoft first-party is expected; an explicit allowlist can overrule.
+  // tenant. Microsoft first-party gets its own rule below; an explicit allowlist can overrule.
   if (all.length && sp.external && sp.ownerOrg) {
     const org = String(sp.ownerOrg).toLowerCase();
     const isMs = org === MICROSOFT_FIRST_PARTY_TENANT;
     const alEntry = (typeof CROSS_TENANT_CRED_ALLOWLIST !== "undefined" ? CROSS_TENANT_CRED_ALLOWLIST : [])
       .find(e => (e.ownerOrg && e.ownerOrg.toLowerCase() === org) || (e.appId && sp.appId && e.appId.toLowerCase() === String(sp.appId).toLowerCase()));
     if (!isMs && !alEntry) {
-      flags.push({ sev: "high",
+      flags.push({ code: "xtenant", sev: "high",
         text: `Tenant-side credential on a vendor (externally-owned) app`,
-        why: `This service principal is owned by another tenant (${escapeHtml(String(sp.ownerOrg))}), yet carries ${all.length} credential(s) in yours. Vendor credentials normally live in the vendor's tenant — a credential here matches the known persistence pattern (attacker-planted secret). Review and remove if you did not create it.` });
+        why: `This service principal is owned by another tenant (${escapeHtml(String(sp.ownerOrg))}), yet carries ${all.length} credential(s) in yours. Vendor credentials normally live in the vendor's tenant. A credential here matches the known persistence pattern (attacker-planted secret). Review and remove if you did not create it.` });
     } else if (alEntry) {
-      flags.push({ sev: "med",
-        text: `Cross-tenant credential — allowlisted`,
+      flags.push({ code: "xtenant-allow", sev: "med",
+        text: `Cross-tenant credential (allowlisted)`,
         why: `A tenant-side credential on this external app would normally flag, but it is on the allowlist: "${escapeHtml(alEntry.reason||"no reason given")}". Re-confirm this is still intended.` });
     }
   }
 
-  if (all.length > 3) flags.push({ sev: "med", text: `${all.length} credentials on this app`, why: "Multiple credentials widen the attack surface and make rotation/cleanup harder." });
+  if (all.length > 3) flags.push({ code: "many", sev: "med", text: `${all.length} credentials on this app`, why: "Multiple credentials widen the attack surface and make rotation/cleanup harder." });
 
   all.forEach(c => {
     const sVal = c.startDateTime || c.StartDateTime;
     const eVal = c.endDateTime || c.EndDateTime;
-    const start = sVal ? Date.parse(sVal) : null;
-    const end = eVal ? Date.parse(eVal) : null;
+    const start = credTime(sVal);
+    const end = credTime(eVal);
     const src = c.src || c.source || c.Source;
     const srcLabel = src === "application" ? " on the app registration" : src === "servicePrincipal" ? " on the service principal" : "";
     if (start && end) {
       const years = (end - start) / (365.25 * 864e5);
       const cName = c.displayName || c.DisplayName;
-      if (years > 2) flags.push({ sev: "med",
+      if (years > 2) flags.push({ code: "longlived", sev: "med",
         text: `Long-lived ${c.kind} (${years.toFixed(1)} yr)${cName ? ' “'+escapeHtml(cName)+'”' : ""}`,
         why: `A multi-year credential${srcLabel} is ideal for persistence; short lifetimes limit a stolen secret's window.` });
     }
-    if (start && now && start > now - 14 * 864e5) flags.push({ sev: "med",
+    if (start && now && start > now - 14 * 864e5) flags.push({ code: "recent", sev: "med",
       text: `${c.kind} added in the last 14 days${srcLabel}`,
-      why: "Recently-added credentials deserve a look — confirm you (not an attacker) created it." });
+      why: "Recently-added credentials deserve a look. Confirm you (not an attacker) created it." });
     // "changes since" filter: credentials created after the chosen date
-    if (sinceTs && start && start >= sinceTs) flags.push({ sev: "high",
+    if (sinceTs && start && start >= sinceTs) flags.push({ code: "since", sev: "high",
       text: `${c.kind} created after the review date${srcLabel}`,
-      why: `This credential's start date is on/after the date you set — it is a candidate for "what changed since" review.` });
+      why: `This credential's start date is on/after the date you set, so it is a candidate for "what changed since" review.` });
   });
 
   if (sp.ownerOrg && String(sp.ownerOrg).toLowerCase() === MICROSOFT_FIRST_PARTY_TENANT && all.length)
-    flags.push({ sev: "high", text: "Credential on a Microsoft first-party app", why: "Customers essentially never add their own credential to a Microsoft-owned service principal. This is highly unusual and worth investigating." });
+    flags.push({ code: "ms-firstparty", sev: "high", text: "Credential on a Microsoft first-party app", why: "Customers essentially never add their own credential to a Microsoft-owned service principal. This is highly unusual and worth investigating." });
 
   // de-dup by text
   const seen = new Set();
   return flags.filter(f => { if (seen.has(f.text)) return false; seen.add(f.text); return true; });
+}
+
+function pimSentence(sp) {
+  const how = sp.pimGroup
+    ? `through the group “${escapeHtml(sp.pimGroup.name)}”, which is PIM-eligible for a Global Admin-equivalent role`
+    : "by activating a PIM-eligible role";
+  return `Reaches Global Admin only ${how}. Activation is a gated, logged step (often MFA plus approval), not standing access. Still a path, but weaker than a standing assignment.`;
+}
+
+function hasCrossTenantCred(sp) {
+  return (sp.credFlags || []).some(f => f.code === "xtenant" || f.code === "ms-firstparty");
 }
 
 function scoreApp(sp) {
@@ -757,11 +788,11 @@ function rollupBlock(d) {
     : "";
   const groupNote = r.haveGroupData
     ? `<p class="rsub" style="margin-top:14px;color:var(--contained)">Group data included (${r.groupCount} groups): membership and role-assignable-group paths were resolved, so group-based conditionals are now confirmed or cleared.</p>`
-    : `<p class="rsub" style="margin-top:14px;color:var(--text-faint)">No group data in this export — group-based escalation stays “conditional (unverified).” Re-run the export script with the group block to resolve those. Role-assignable groups are protected from plain group-write, so many will clear.</p>`;
+    : `<p class="rsub" style="margin-top:14px;color:var(--text-faint)">No group data in this export, so group-based escalation stays “conditional (unverified).” Re-run the export script with the group block to resolve those. Role-assignable groups are protected from plain group-write, so many will clear.</p>`;
   const sinceNote = d.since
-    ? `<p class="rsub" style="margin-top:10px;color:var(--caution)">“What changed since ${escapeHtml(d.since)}”: ${r.changedSince} credential(s) dated on/after that are flagged on their apps. This only sees items that carry a creation date — a change with no timestamp in the export will not appear here.</p>`
+    ? `<p class="rsub" style="margin-top:10px;color:var(--caution)">“What changed since ${escapeHtml(d.since)}”: ${r.changedSince} credential(s) dated on/after that are flagged on their apps. This only sees items that carry a creation date. A change with no timestamp in the export will not appear here.</p>`
     : "";
-  const blindspot = `<div class="blindspot"><span class="bs-ic">◐</span><div><b>What this can't see.</b> It reasons only from what's in the export: it doesn't log in, confirm activity, or capture app-role/access-package grants on non-role-assignable groups or Azure RBAC. “No known path” means nothing in the knowledge base matched for the data provided — not that an app is safe.</div></div>`;
+  const blindspot = `<div class="blindspot"><span class="bs-ic">◐</span><div><b>What this can't see.</b> It reasons only from what's in the export: it doesn't log in, confirm activity, or capture app-role/access-package grants on non-role-assignable groups or Azure RBAC. “No known path” means nothing in the knowledge base matched for the data provided, not that an app is safe.</div></div>`;
   el.innerHTML = `<h3>Tenant rollup</h3>
     <p class="rsub">${r.total} apps analyzed${d.tenantId ? ` in tenant ${d.tenantId}` : ""}. ${meta}</p>
     <div class="stat-grid">
@@ -830,7 +861,7 @@ function appRow(sp) {
   if (sp.gaViaOwnership) badges.push(`<span class="abadge group">via ownership</span>`);
   if (sp.groupProof) badges.push(`<span class="abadge group">via group</span>`);
   if (sp.groupCleared) badges.push(`<span class="abadge cleared">group-cleared</span>`);
-  if ((sp.credFlags||[]).some(f => /externally-owned|Microsoft first-party/.test(f.text))) badges.push(`<span class="abadge cred">cross-tenant cred</span>`);
+  if (hasCrossTenantCred(sp)) badges.push(`<span class="abadge cred">cross-tenant cred</span>`);
   else if (sp.credFlags.length) badges.push(`<span class="abadge cred">cred flag</span>`);
   if (sp.ownerFindings && sp.ownerFindings.length) badges.push(`<span class="abadge owner">human owner</span>`);
 
@@ -858,30 +889,30 @@ function appDetail(sp) {
     if (sp.groupProof) {
       const g = sp.groupProof.group;
       const rnames = (g.roleObjs||[]).map(r=>r.id).join(", ") || "a privileged role";
-      html += `<div style="font-size:12.5px;color:var(--text-dim);margin-bottom:10px">Confirmed via group membership — this app ${sp.groupProof.how} a ${g.roleAssignable?"role-assignable ":""}group that holds <code style="font-family:var(--mono);color:var(--text)">${escapeHtml(rnames)}</code>:</div>`;
+      html += `<div style="font-size:12.5px;color:var(--text-dim);margin-bottom:10px">Confirmed via group membership: this app ${sp.groupProof.how} a ${g.roleAssignable?"role-assignable ":""}group that holds <code style="font-family:var(--mono);color:var(--text)">${escapeHtml(rnames)}</code>:</div>`;
       html += groupChain(sp);
     } else if (sp.confirmedViaChain && sp.gaProof) {
-      html += `<div style="font-size:12.5px;color:var(--text-dim);margin-bottom:10px">Confirmed from this tenant's own data — this app can plant a credential on a more privileged app and inherit it:</div>`;
+      html += `<div style="font-size:12.5px;color:var(--text-dim);margin-bottom:10px">Confirmed from this tenant's own data: this app can plant a credential on a more privileged app and inherit it:</div>`;
       html += proofChain(sp);
     } else {
       const reasons = sp.analysis.directReasons.length ? sp.analysis.directReasons
         : sp.perms.filter(p => p.id === "AppRoleAssignment.ReadWrite.All");
       html += `<div style="font-size:12.5px;color:var(--text-dim)">`;
-      reasons.slice(0,4).forEach(r => { html += `• <code style="font-family:var(--mono);color:var(--text)">${r.id}</code> — ${r.escalationNote || r.plain}<br>`; });
-      if (sp.roleObjs.some(r=>r.escalation==="direct")) sp.roleObjs.filter(r=>r.escalation==="direct").forEach(r => html += `• role <code style="font-family:var(--mono);color:var(--text)">${r.id}</code> — ${r.escalationNote}<br>`);
+      reasons.slice(0,4).forEach(r => { html += `• <code style="font-family:var(--mono);color:var(--text)">${r.id}</code>: ${r.escalationNote || r.plain}<br>`; });
+      if (sp.roleObjs.some(r=>r.escalation==="direct")) sp.roleObjs.filter(r=>r.escalation==="direct").forEach(r => html += `• role <code style="font-family:var(--mono);color:var(--text)">${r.id}</code>: ${r.escalationNote}<br>`);
       html += `</div>`;
     }
   } else if (sp.finalSev === "conditional") {
-    html += `<div class="sec-t">Conditional — needs tenant data this export doesn't confirm</div>`;
+    html += `<div class="sec-t">Conditional: needs tenant data this export doesn't confirm</div>`;
     html += `<div style="font-size:12.5px;color:var(--text-dim)">`;
     sp.analysis.condReasons.slice(0,4).forEach(r => {
-      html += `• <code style="font-family:var(--mono);color:var(--text)">${r.id}</code> — ${r.escalationNote || r.plain}${r.conditionalOn?` <span style="color:var(--text-faint)">(depends on: ${r.conditionalOn})</span>`:""}<br>`;
+      html += `• <code style="font-family:var(--mono);color:var(--text)">${r.id}</code>: ${r.escalationNote || r.plain}${r.conditionalOn?` <span style="color:var(--text-faint)">(depends on: ${r.conditionalOn})</span>`:""}<br>`;
     });
     html += `</div>`;
     if (sp.groupCleared) html += `<div style="font-size:12px;color:var(--contained);margin-top:8px">✓ ${escapeHtml(sp.groupCleared)}</div>`;
   } else {
     html += `<div class="sec-t">No known takeover path</div>
-      <div style="font-size:12.5px;color:var(--text-dim)">Nothing here maps to a known Global Admin escalation. Data reach can still matter — see below.</div>`;
+      <div style="font-size:12.5px;color:var(--text-dim)">Nothing here maps to a known Global Admin escalation. Data reach can still matter. See below.</div>`;
   }
 
   // 2. reach
@@ -896,21 +927,23 @@ function appDetail(sp) {
   if (sp.roleObjs.length || (sp.roleObjsEligible && sp.roleObjsEligible.length)) {
     html += `<div class="sec-t">Directory roles</div><div class="mini-reach">`;
     sp.roleObjs.forEach(r => html += `<span class="mini-chip ${r.escalation==="direct"?"hot":""}">${escapeHtml(r.id)}</span>`);
-    (sp.roleObjsEligible||[]).forEach(r => html += `<span class="mini-chip ${r.escalation==="direct"?"hot":""}" title="Eligible via PIM — requires activation">${escapeHtml(r.id)} · PIM-eligible</span>`);
+    (sp.roleObjsEligible||[]).forEach(r => html += `<span class="mini-chip ${r.escalation==="direct"?"hot":""}" title="Eligible via PIM; requires activation">${escapeHtml(r.id)} · PIM-eligible</span>`);
     html += `</div>`;
-    if (sp.viaPim) html += `<div style="font-size:12px;color:var(--caution);margin-top:7px">Reaches Global Admin only by activating a PIM-eligible role — a gated, logged step (often MFA + approval), not standing access. Still a path, but weaker than a standing assignment.</div>`;
+    if (sp.viaPim) html += `<div style="font-size:12px;color:var(--caution);margin-top:7px">${pimSentence(sp)}</div>`;
+  } else if (sp.viaPim) {
+    html += `<div class="sec-t">Directory roles</div><div style="font-size:12px;color:var(--caution)">${pimSentence(sp)}</div>`;
   }
 
   // 3b. ownership paths
   if (sp.ownerFindings && sp.ownerFindings.length) {
     html += `<div class="sec-t">Ownership paths into this app</div>`;
-    sp.ownerFindings.forEach(f => html += `<div class="cred-line"><span class="cf" style="color:${f.sev==="high"?"var(--takeover)":"var(--caution)"}">${f.sev==="high"?"!":"~"}</span><span>${escapeHtml(f.text)} <span style="color:var(--text-faint)">— ${escapeHtml(f.why)}</span></span></div>`);
+    sp.ownerFindings.forEach(f => html += `<div class="cred-line"><span class="cf" style="color:${f.sev==="high"?"var(--takeover)":"var(--caution)"}">${f.sev==="high"?"!":"~"}</span><span>${escapeHtml(f.text)}. <span style="color:var(--text-faint)">${escapeHtml(f.why)}</span></span></div>`);
   }
 
   // 4. credential flags (structured: severity + why)
   if (sp.credFlags.length) {
     html += `<div class="sec-t">Credential hygiene</div>`;
-    sp.credFlags.forEach(f => html += `<div class="cred-line"><span class="cf" style="color:${f.sev==="high"?"var(--takeover)":"var(--caution)"}">${f.sev==="high"?"!":"~"}</span><span><b style="color:var(--text)">${escapeHtml(f.text)}</b> <span style="color:var(--text-faint)">— ${escapeHtml(f.why)}</span></span></div>`);
+    sp.credFlags.forEach(f => html += `<div class="cred-line"><span class="cf" style="color:${f.sev==="high"?"var(--takeover)":"var(--caution)"}">${f.sev==="high"?"!":"~"}</span><span><b style="color:var(--text)">${escapeHtml(f.text)}.</b> <span style="color:var(--text-faint)">${escapeHtml(f.why)}</span></span></div>`);
   }
 
   // 5. permission dump + unknowns
@@ -1162,14 +1195,14 @@ function partnerRollupBlock(d) {
       ${stat(r.expiring, "expiring < 30 days", r.expiring ? "warn" : "")}
       ${stat(r.noMfaMembers, "admins without MFA", r.noMfaMembers ? "alarm" : "")}
     </div>
-    <p class="rsub" style="margin-top:14px;color:var(--text-dim)">If a single partner-tenant identity in a master-key group is phished, or a management app's credential in one is stolen, the attacker inherits that group's roles in <b style="color:var(--text)">every customer it reaches</b> — the MSP amplification behind the SkyKick-class incidents.</p>`;
+    <p class="rsub" style="margin-top:14px;color:var(--text-dim)">If a single partner-tenant identity in a master-key group is phished, or a management app's credential in one is stolen, the attacker inherits that group's roles in <b style="color:var(--text)">every customer it reaches</b>. That is the MSP amplification behind the SkyKick-class incidents.</p>`;
   return el;
 }
 
 function masterKeysBlock(d) {
   const el = document.createElement("div");
   el.className = "controls-sec";
-  el.innerHTML = `<h3>Master keys — lock these down first</h3>
+  el.innerHTML = `<h3>Master keys: lock these down first</h3>
     <p class="csub">Partner security groups ranked by how many customers they unlock and at what level. One group mapped to Global Admin across many customers is the highest-value target in your whole estate.</p>
     ${d.keyList.map(masterKeyCard).join("")}`;
   return el;
@@ -1249,7 +1282,7 @@ function custRow(c) {
       <div class="sec-t">Roles a partner compromise could wield here</div>
       <div class="mini-reach">${c.roles.length ? c.roles.map(r => `<span class="mini-chip ${/global admin|privileged|legacy dap/i.test(r)?"hot":""}">${escapeHtml(r)}</span>`).join("") : '<span class="mini-chip">none mapped</span>'}</div>
       ${c.viaGroups.length ? `<div class="sec-t">Reached via these partner groups</div><div class="mini-reach">${c.viaGroups.map(g=>`<span class="mini-chip">${escapeHtml(g)}</span>`).join("")}</div>` : ""}
-      ${c.endDateTime ? `<div style="font-size:11.5px;color:var(--text-faint);margin-top:10px">Relationship ends ${new Date(c.endDateTime).toLocaleDateString()}${c.relstat==="expired"?" — already expired":c.relstat==="expiring"?" — expiring soon":""}.</div>` : ""}
+      ${c.endDateTime ? `<div style="font-size:11.5px;color:var(--text-faint);margin-top:10px">Relationship ends ${new Date(c.endDateTime).toLocaleDateString()}${c.relstat==="expired"?", already expired":c.relstat==="expiring"?", expiring soon":""}.</div>` : ""}
       ${c.isLegacyDap ? `<div style="font-size:12px;color:var(--takeover);margin-top:8px">Legacy DAP: standing Global Admin on this customer. Migrate to GDAP and remove it.</div>` : ""}
     </div>
   </div>`;
@@ -1287,7 +1320,7 @@ function partnerDisclaimerBlock() {
   el.innerHTML = `<b>Read this.</b> This maps the <i>structural</i> reach of GDAP and legacy DAP: which customer tenants a partner-side
     identity can administer, and at what role level. It reasons from the relationships, access assignments and group memberships in
     your export; it does not log in to customer tenants or confirm what was actually done. Roles become live only once mapped to a
-    group via an access assignment — latent relationship roles are shown but flagged. Escalation classification reuses the same
+    group via an access assignment. Latent relationship roles are shown but flagged. Escalation classification reuses the same
     knowledge base (v${KB_VERSION}) as the rest of the tool. Verify against Partner Center and current Microsoft guidance before acting.
     GDAP exists to shrink this blast radius; the goal is least-privilege, time-bound, MFA-protected partner access, not zero partner access.`;
   return el;
@@ -1296,7 +1329,7 @@ function partnerDisclaimerBlock() {
 // <<<STRIP-PUBLIC-END>>>
 
 // ============================================================================
-// EXPORTABLE REPORT — browser-only, self-contained, print/PDF-ready
+// EXPORTABLE REPORT: browser-only, self-contained, print/PDF-ready
 // ============================================================================
 function exportBar(mode) {
   const el = document.createElement("div");
@@ -1347,18 +1380,19 @@ function printReport(mode) {
     doc.open(); doc.write(html); doc.close();
     setTimeout(() => {
       try { frame.contentWindow.focus(); frame.contentWindow.print(); }
-      catch (e) { if (note) note.textContent = "Printing was blocked here — use Download report instead, then print the file."; }
+      catch (e) { if (note) note.textContent = "Printing was blocked here. Use Download report instead, then print the file."; }
       setTimeout(() => frame.remove(), 1000);
     }, 300);
   } catch (e) {
     frame.remove();
-    if (note) note.textContent = "Printing was blocked here — use Download report instead, then print the file.";
+    if (note) note.textContent = "Printing was blocked here. Use Download report instead, then print the file.";
   }
 }
 
 // ---- report HTML builder (light theme, system fonts, print CSS) ----
 function reportHead(title) {
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(title)}</title>
 <style>
@@ -1422,7 +1456,7 @@ function reportHead(title) {
 </style></head><body>
 <div class="toolbar">
   <button class="primary" onclick="window.print()">Print / Save as PDF</button>
-  <span class="tnote">Opens your browser's print dialog — choose “Save as PDF” as the destination.</span>
+  <span class="tnote">Opens your browser's print dialog. Choose “Save as PDF” as the destination.</span>
 </div>
 <div class="page">`;
 }
@@ -1435,7 +1469,7 @@ function reportHeader(title, scopeLine) {
   return `<header class="rpt">
     <div class="mark"><span class="dot"></span> Blast Radius</div>
     <h1>${escapeHtml(title)}</h1>
-    <div class="meta">${scopeLine}<br>${forLine}${sep}${byLine}${(forLine||byLine)?"<br>":""}<b>Generated:</b> ${now.toLocaleString()} &nbsp;·&nbsp; knowledge base v${KB_VERSION}</div>
+    <div class="meta">${scopeLine}<br>${forLine}${sep}${byLine}${(forLine||byLine)?"<br>":""}<b>Generated:</b> ${now.toLocaleString()} &nbsp;·&nbsp; knowledge base v${KB_VERSION} (${kbAgeLabel()} when generated)</div>${kbIsStale() ? `<div class="meta" style="color:var(--amber)"><b>Note:</b> this knowledge base was more than ${KB_STALE_DAYS} days old when the report was generated. Newer escalation research may not be reflected.</div>` : ""}
   </header>`;
 }
 
@@ -1443,18 +1477,18 @@ function reportFoot() {
   return `<div class="foot"><b>Methodology &amp; limitations.</b> This assessment reasons about Microsoft Entra application
     permissions, directory roles, group memberships and delegated-admin (GDAP) relationships using a knowledge base
     (v${KB_VERSION}) built from public research (SpecterOps/BloodHound, Horizon3, Maester, Emilien Socchi's azure-tiering)
-    and Microsoft documentation. It analyzes configuration and structural reach, not activity — it does not confirm what an
+    and Microsoft documentation. It analyzes configuration and structural reach, not activity. It does not confirm what an
     attacker did or could do in practice, and “no known path” means nothing in the knowledge base matched, not that a target
     is safe. Escalation and blast-radius findings depend on the accuracy and completeness of the exported data. Verify against
-    the live tenant and current Microsoft guidance before acting. Prepared with Blast Radius, an analysis aid — not a
+    the live tenant and current Microsoft guidance before acting. Prepared with Blast Radius, an analysis aid, not a
     substitute for a full security audit.</div></div></body></html>`;
 }
 
 function verdictCfgReport(sev) {
   return {
     direct: { badge:"CAN REACH GLOBAL ADMIN", t:"Full tenant takeover is possible.", s:"One or more permissions or roles lead to Global Administrator (or equivalent)." },
-    conditional: { badge:"LIKELY — CONDITIONAL", t:"Takeover is likely, depending on tenant configuration.", s:"Escalation depends on other objects (apps, role-assignable groups)." },
-    none: { badge:"NO KNOWN PATH", t:"No known takeover path from what was analyzed.", s:"Not the same as safe — data reach can still be significant." },
+    conditional: { badge:"LIKELY: CONDITIONAL", t:"Takeover is likely, depending on tenant configuration.", s:"Escalation depends on other objects (apps, role-assignable groups)." },
+    none: { badge:"NO KNOWN PATH", t:"No known takeover path from what was analyzed.", s:"Not the same as safe. Data reach can still be significant." },
   }[sev];
 }
 
@@ -1487,7 +1521,7 @@ function reportSingle(title) {
   const reasons = a.sev === "direct" ? a.directReasons : a.sev === "conditional" ? a.condReasons : [];
   if (reasons.length) {
     html += `<h3 class="sub">Why</h3><ul class="clean">`;
-    reasons.slice(0,8).forEach(r => html += `<li><b>${escapeHtml(r.id)}</b> — ${escapeHtml(r.escalationNote || r.plain)}${r.conditionalOn?` <span class="muted">(depends on: ${escapeHtml(r.conditionalOn)})</span>`:""}</li>`);
+    reasons.slice(0,8).forEach(r => html += `<li><b>${escapeHtml(r.id)}</b>: ${escapeHtml(r.escalationNote || r.plain)}${r.conditionalOn?` <span class="muted">(depends on: ${escapeHtml(r.conditionalOn)})</span>`:""}</li>`);
     html += `</ul>`;
   }
 
@@ -1499,7 +1533,7 @@ function reportSingle(title) {
   // detection
   html += `<h2 class="sec">Detection reality</h2><ul class="clean">
     <li>App sign-ins from unexpected IPs are visible only in service-principal sign-in logs, which require Entra P1 and are a separate view from user sign-ins.</li>
-    <li>${a.hasStealthyRead ? "Directory reads via Microsoft Graph leave no audit record — you cannot tell after the fact what this app read." : "Some reads are not logged; mailbox and file access may appear in the unified audit log if it is enabled."}</li>
+    <li>${a.hasStealthyRead ? "Directory reads via Microsoft Graph never appear in the Entra audit log. Unless Microsoft Graph activity logs were already enabled, you cannot tell after the fact what this app read." : "Some reads are not logged; mailbox and file access may appear in the unified audit log if it is enabled."}</li>
     <li>Default Entra log retention is short (7–30 days); longer retention needs P1 plus a Log Analytics/SIEM export.</li></ul>`;
 
   // controls
@@ -1534,11 +1568,17 @@ function reportTenant(title) {
   html += `<p class="lede">Of ${r.total} applications analyzed, <b>${r.ga}</b> can reach Global Administrator` +
     (r.gaChained ? ` (${r.gaChained} only by chaining through another app or a group)` : "") +
     `. ${r.conditional} more are conditional, ${r.withRoles} hold a directory role, and ${r.suspCreds} carry credential-hygiene concerns. ` +
-    `${r.vendor} are vendor (multi-tenant) apps whose credential you cannot rotate.</p>`;
+    `${r.vendor} are vendor (multi-tenant) apps whose credential you cannot rotate.` +
+    (r.pimGa ? ` ${r.pimGa} of the Global Admin paths ${r.pimGa>1?"are":"is"} PIM-gated: reachable only through a logged activation.` : "") +
+    (r.crossTenantCreds ? ` <b>${r.crossTenantCreds} ${r.crossTenantCreds>1?"apps carry":"app carries"} a credential on a vendor or Microsoft-owned service principal, the persistence pattern from the ConnectWise incident.</b>` : "") +
+    `</p>` +
+    (d.since ? `<p class="lede">Review date: <b>${escapeHtml(d.since)}</b>. ${r.changedSince} credential(s) were created on or after it. Only credentials carry creation dates in this export, so role, group and consent changes since that date are not detected here.</p>` : "");
 
   html += `<div class="stats">
     ${rstat(r.ga,"reach Global Admin",r.ga?"red":"")}
     ${rstat(r.gaChained,"via a backdoor/group chain",r.gaChained?"red":"")}
+    ${rstat(r.pimGa,"GA via PIM activation",r.pimGa?"amber":"")}
+    ${rstat(r.crossTenantCreds,"cross-tenant credentials",r.crossTenantCreds?"red":"")}
     ${rstat(r.conditional,"conditional",r.conditional?"amber":"")}
     ${rstat(r.withRoles,"hold a directory role",r.withRoles?"amber":"")}
     ${rstat(r.suspCreds,"credential concerns",r.suspCreds?"amber":"")}
@@ -1549,13 +1589,27 @@ function reportTenant(title) {
   // key findings: GA-reaching apps
   const ga = d.sps.filter(s => s.finalSev === "direct").sort((a,b)=>b.riskScore-a.riskScore);
   if (ga.length) {
-    html += `<h2 class="sec">Priority findings — apps that can reach Global Admin</h2>`;
+    html += `<h2 class="sec">Priority findings: apps that can reach Global Admin</h2>`;
     ga.slice(0,12).forEach(sp => {
       let why = "";
-      if (sp.groupProof) { const g = sp.groupProof.group; why = `${sp.groupProof.how} the ${g.roleAssignable?"role-assignable ":""}group “${escapeHtml(g.name)}”, which holds a privileged role`; }
+      if (sp.viaPim) why = sp.pimGroup ? `is in or owns the group “${escapeHtml(sp.pimGroup.name)}”, which is PIM-eligible for a Global Admin-equivalent role (gated, logged activation)` : `is PIM-eligible for ${escapeHtml(((sp.roleObjsEligible||[]).find(x=>x.escalation==="direct")||{}).id||"a Global Admin-equivalent role")} (gated, logged activation)`;
+      else if (sp.groupProof) { const g = sp.groupProof.group; why = `${sp.groupProof.how} the ${g.roleAssignable?"role-assignable ":""}group “${escapeHtml(g.name)}”, which holds a privileged role`; }
+      else if (sp.gaViaOwnership && sp.gaProof) why = `owns the more privileged app “${escapeHtml(sp.gaProof.name)}” and can add a credential to it`;
       else if (sp.confirmedViaChain && sp.gaProof) why = `can plant a credential on the more privileged app “${escapeHtml(sp.gaProof.name)}” and inherit it`;
       else { const rr = (sp.analysis.directReasons[0]||sp.perms.find(p=>p.id==="AppRoleAssignment.ReadWrite.All")); why = rr ? `holds ${escapeHtml(rr.id)}` : (sp.roleObjs.find(x=>x.escalation==="direct") ? `holds the ${escapeHtml(sp.roleObjs.find(x=>x.escalation==="direct").id)} role` : "holds a direct-escalation permission"); }
-      html += `<div class="finding red"><b>${escapeHtml(sp.name)}</b> <span class="muted">(${sp.appType==="multi-tenant"?"vendor":"own"}${sp.enabled?"":", disabled"})</span> — ${why}.</div>`;
+      html += `<div class="finding red"><b>${escapeHtml(sp.name)}</b> <span class="muted">(${sp.appType==="multi-tenant"?"vendor":"own"}${sp.enabled?"":", disabled"})</span>: ${why}.</div>`;
+    });
+  }
+
+  // credential and ownership findings, with the reason each one fired
+  const credApps = d.sps.filter(s => (s.credFlags||[]).length || (s.ownerFindings||[]).length).sort((a,b)=>b.riskScore-a.riskScore);
+  if (credApps.length) {
+    html += `<h2 class="sec">Credential and ownership findings</h2>`;
+    credApps.slice(0,15).forEach(sp => {
+      const items = (sp.credFlags||[]).concat(sp.ownerFindings||[]);
+      const red = items.some(f => f.sev === "high");
+      html += `<div class="finding ${red?"red":"amber"}"><b>${escapeHtml(sp.name)}</b><ul style="margin:6px 0 0 18px;padding:0">` +
+        items.map(f => `<li><b>${escapeHtml(f.text)}.</b> ${f.why}</li>`).join("") + `</ul></div>`;
     });
   }
 
@@ -1563,13 +1617,14 @@ function reportTenant(title) {
   html += `<h2 class="sec">Application inventory</h2>`;
   html += `<table><thead><tr><th>Application</th><th>Type</th><th>Verdict</th><th>Roles</th><th>Flags</th></tr></thead><tbody>`;
   d.sps.slice().sort((a,b)=>b.riskScore-a.riskScore).forEach(sp => {
-    const v = sp.finalSev; const vl = v==="direct"?"Global Admin":v==="conditional"?"Conditional":"No known path";
-    const flags = []; if (!sp.enabled) flags.push("disabled"); if (sp.credFlags.length) flags.push("cred concern"); if (sp.groupProof) flags.push("via group"); if (sp.groupCleared) flags.push("group-cleared");
+    const v = sp.finalSev; const vl = v==="direct"?(sp.viaPim?"Global Admin (PIM-gated)":"Global Admin"):v==="conditional"?"Conditional":"No known path";
+    const flags = []; if (!sp.enabled) flags.push("disabled"); if (hasCrossTenantCred(sp)) flags.push("cross-tenant cred"); else if (sp.credFlags.length) flags.push("cred concern");
+    if (sp.gaViaOwnership) flags.push("via ownership"); if (sp.ownerFindings && sp.ownerFindings.length) flags.push("human owner"); if (sp.groupProof) flags.push("via group"); if (sp.groupCleared) flags.push("group-cleared");
     html += `<tr><td><b>${escapeHtml(sp.name)}</b><br><span class="muted" style="font-size:11px">${escapeHtml(sp.appId||"")}</span></td>` +
       `<td>${sp.appType==="multi-tenant"?"vendor":"own"}</td>` +
       `<td><span class="pill ${v}">${vl}</span></td>` +
-      `<td>${sp.roleObjs.map(x=>escapeHtml(x.id)).join(", ")||"—"}</td>` +
-      `<td>${flags.join(", ")||"—"}</td></tr>`;
+      `<td>${sp.roleObjs.map(x=>escapeHtml(x.id)).join(", ")||"None"}</td>` +
+      `<td>${flags.join(", ")||"None"}</td></tr>`;
   });
   html += `</tbody></table>`;
 
@@ -1606,9 +1661,9 @@ function reportPartner(title) {
 
   // master keys
   if (d.keyList.length) {
-    html += `<h2 class="sec">Master keys — highest-value targets</h2>`;
+    html += `<h2 class="sec">Master keys: highest-value targets</h2>`;
     html += `<table><thead><tr><th>Partner group</th><th>Customers reached</th><th>Fully takeable</th><th>Members</th></tr></thead><tbody>`;
-    d.keyList.forEach(k => { html += `<tr><td><b>${escapeHtml(k.name)}</b></td><td>${k.total}</td><td>${k.directCount?`<span class="pill direct">${k.directCount}</span>`:"0"}</td><td class="muted">${k.memberNames.map(escapeHtml).join(", ")||"—"}</td></tr>`; });
+    d.keyList.forEach(k => { html += `<tr><td><b>${escapeHtml(k.name)}</b></td><td>${k.total}</td><td>${k.directCount?`<span class="pill direct">${k.directCount}</span>`:"0"}</td><td class="muted">${k.memberNames.map(escapeHtml).join(", ")||"None"}</td></tr>`; });
     html += `</tbody></table>`;
   }
 
@@ -1617,7 +1672,7 @@ function reportPartner(title) {
   if (full.length) {
     html += `<h2 class="sec">Customers fully takeable from the partner</h2>`;
     html += `<table><thead><tr><th>Customer</th><th>Roles reachable</th><th>Via groups</th><th>Status</th></tr></thead><tbody>`;
-    full.forEach(c => { html += `<tr><td><b>${escapeHtml(c.name)}</b></td><td>${c.roles.map(x=>`<span class="tag ${/global|privileged|dap/i.test(x)?"hot":""}">${escapeHtml(x)}</span>`).join("")}</td><td>${c.viaGroups.map(escapeHtml).join(", ")||"—"}</td><td>${escapeHtml(c.relstat)}</td></tr>`; });
+    full.forEach(c => { html += `<tr><td><b>${escapeHtml(c.name)}</b></td><td>${c.roles.map(x=>`<span class="tag ${/global|privileged|dap/i.test(x)?"hot":""}">${escapeHtml(x)}</span>`).join("")}</td><td>${c.viaGroups.map(escapeHtml).join(", ")||"None"}</td><td>${escapeHtml(c.relstat)}</td></tr>`; });
     html += `</tbody></table>`;
   }
 
@@ -1627,12 +1682,12 @@ function reportPartner(title) {
   const sevRank = s => s==="direct"?2:s==="conditional"?1:0;
   d.custList.slice().sort((a,b)=>sevRank(b.sev)-sevRank(a.sev)).forEach(c => {
     const vl = c.sev==="direct"?"Full takeover":c.sev==="conditional"?"Scoped admin":"Low";
-    html += `<tr><td><b>${escapeHtml(c.name)}</b></td><td><span class="pill ${c.sev}">${vl}</span></td><td>${c.roles.map(escapeHtml).join(", ")||"—"}</td><td>${escapeHtml(c.relstat)}</td></tr>`;
+    html += `<tr><td><b>${escapeHtml(c.name)}</b></td><td><span class="pill ${c.sev}">${vl}</span></td><td>${c.roles.map(escapeHtml).join(", ")||"None"}</td><td>${escapeHtml(c.relstat)}</td></tr>`;
   });
   html += `</tbody></table>`;
 
   // controls
-  html += `<h2 class="sec">Partner hardening — priorities</h2>`;
+  html += `<h2 class="sec">Partner hardening: priorities</h2>`;
   const eff = ["","toggle","quick","moderate","project"];
   html += `<table><thead><tr><th>Control</th><th>Effort</th><th>License</th><th>Effect</th></tr></thead><tbody>`;
   PARTNER_CONTROLS.slice().sort((x,y)=>x.effort-y.effort).forEach(c => html += `<tr><td><b>${escapeHtml(c.name)}</b><br><span class="muted">${escapeHtml(c.detail)}</span></td><td>${eff[c.effort]}</td><td>${escapeHtml(c.license)}</td><td>${escapeHtml(c.stops)}</td></tr>`);
@@ -1664,7 +1719,7 @@ function switchInput(mode) {
   document.getElementById("mode-paste").style.display = mode==="paste" ? "" : "none";
 }
 function switchScope(s) {
-  // in the public build, tenant/partner panels don't exist — ignore those scopes
+  // in the public build, tenant/partner panels don't exist; ignore those scopes
   if ((s === "tenant" && !has("tenant-mode")) || (s === "partner" && !has("partner-mode"))) return;
   scope = s;
   const press = (id, v) => { const el = $id(id); if (el) el.setAttribute("aria-pressed", v); };
@@ -1708,9 +1763,9 @@ Write-Host "\`nPaste the app role + role names above into Blast Radius."`;
 
 // <<<STRIP-PUBLIC-START>>> tenant + partner scripts, samples, dispatchers (full build only)
 const TENANT_SCRIPT = `# ============================================================
-#  Blast Radius — read-only TENANT export
+#  Blast Radius: read-only TENANT export
 #  READ-ONLY: every call below is a *Get*. No writes, ever.
-#  Scopes are read-only and the script is short on purpose — read it
+#  Scopes are read-only and the script is short on purpose. Read it
 #  before you run it. It never reads credential VALUES, only metadata.
 #
 #  !! The file this produces maps every privilege path in the tenant. !!
@@ -1739,28 +1794,56 @@ Get-MgRoleManagementDirectoryRoleEligibilitySchedule -All -ErrorAction SilentlyC
   if ($n) { $eligibleByPrincipal[$_.PrincipalId] += $n }
 }
 
+# App registrations, pulled once and keyed by appId. Credentials can be planted on the
+# registration as well as the service principal, and registration OWNERS can add them.
+$appRegs = @{}
+Get-MgApplication -All -Property "id,appId,keyCredentials,passwordCredentials" -ErrorAction SilentlyContinue |
+  ForEach-Object { $appRegs[$_.AppId] = $_ }
+
+# Credential METADATA only, never values. Dates go out as ISO 8601 so Windows
+# PowerShell 5.1 and PowerShell 7 produce the same JSON.
+function ConvertTo-BrCred($c, $src) {
+  [pscustomobject]@{
+    displayName   = $c.DisplayName
+    startDateTime = if ($c.StartDateTime) { ([datetime]$c.StartDateTime).ToUniversalTime().ToString("o") } else { $null }
+    endDateTime   = if ($c.EndDateTime)   { ([datetime]$c.EndDateTime).ToUniversalTime().ToString("o") }   else { $null }
+    source        = $src
+  }
+}
+function ConvertTo-BrOwner($o) {
+  $t = if ($o.AdditionalProperties.'@odata.type' -match 'servicePrincipal|application') { 'servicePrincipal' } else { 'user' }
+  [pscustomobject]@{ id = $o.Id; type = $t; displayName = $o.AdditionalProperties.displayName }
+}
+
+$resCache = @{}
 $sps = foreach ($sp in Get-MgServicePrincipal -All) {
   $appRoleValues = foreach ($a in (Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $sp.Id -All)) {
-    $res = Get-MgServicePrincipal -ServicePrincipalId $a.ResourceId -ErrorAction SilentlyContinue
-    ($res.AppRoles | Where-Object Id -eq $a.AppRoleId).Value
+    if (-not $resCache.ContainsKey($a.ResourceId)) {
+      $resCache[$a.ResourceId] = Get-MgServicePrincipal -ServicePrincipalId $a.ResourceId -ErrorAction SilentlyContinue
+    }
+    ($resCache[$a.ResourceId].AppRoles | Where-Object Id -eq $a.AppRoleId).Value
   }
   $owned = foreach ($o in (Get-MgServicePrincipalOwnedObject -ServicePrincipalId $sp.Id -All -ErrorAction SilentlyContinue)) {
     $o.AdditionalProperties.appId
   }
-  # OWNERS of this service principal (users or other SPs) — an owner can add a
-  # credential and inherit access, so this is an escalation path into the app.
-  $owners = foreach ($o in (Get-MgServicePrincipalOwner -ServicePrincipalId $sp.Id -All -ErrorAction SilentlyContinue)) {
-    $t = if ($o.AdditionalProperties.'@odata.type' -match 'servicePrincipal|application') { 'servicePrincipal' } else { 'user' }
-    [pscustomobject]@{ id = $o.Id; type = $t; displayName = $o.AdditionalProperties.displayName }
-  }
-  # credential METADATA only (never values); tag the source for cleanup guidance
-  $spKey = @($sp.KeyCredentials      | Select-Object DisplayName, StartDateTime, EndDateTime | ForEach-Object { $_ | Add-Member source 'servicePrincipal' -PassThru })
-  $spPwd = @($sp.PasswordCredentials | Select-Object DisplayName, StartDateTime, EndDateTime | ForEach-Object { $_ | Add-Member source 'servicePrincipal' -PassThru })
-  # also the app REGISTRATION's credentials (different cleanup), if we own it
-  $appReg = Get-MgApplication -Filter "appId eq '$($sp.AppId)'" -ErrorAction SilentlyContinue
+  # OWNERS of the service principal AND of the app registration (users or other
+  # SPs). An owner can add a credential and inherit the app's access.
+  $appReg = $appRegs[$sp.AppId]
+  $owners = @(Get-MgServicePrincipalOwner -ServicePrincipalId $sp.Id -All -ErrorAction SilentlyContinue | ForEach-Object { ConvertTo-BrOwner $_ })
   if ($appReg) {
-    $spKey += @($appReg.KeyCredentials      | Select-Object DisplayName, StartDateTime, EndDateTime | ForEach-Object { $_ | Add-Member source 'application' -PassThru })
-    $spPwd += @($appReg.PasswordCredentials | Select-Object DisplayName, StartDateTime, EndDateTime | ForEach-Object { $_ | Add-Member source 'application' -PassThru })
+    $owners += @(Get-MgApplicationOwner -ApplicationId $appReg.Id -All -ErrorAction SilentlyContinue | ForEach-Object { ConvertTo-BrOwner $_ })
+  }
+  $owners = @($owners | Where-Object { $_ } | Sort-Object id -Unique)
+  # delegated permission grants (admin or user consent)
+  $grants = foreach ($gr in (Get-MgServicePrincipalOauth2PermissionGrant -ServicePrincipalId $sp.Id -All -ErrorAction SilentlyContinue)) {
+    [pscustomobject]@{ scope = $gr.Scope; consentType = $gr.ConsentType }
+  }
+  # credentials on the SP and on the registration, tagged by source (cleanup differs)
+  $spKey = @($sp.KeyCredentials      | Where-Object { $_ } | ForEach-Object { ConvertTo-BrCred $_ 'servicePrincipal' })
+  $spPwd = @($sp.PasswordCredentials | Where-Object { $_ } | ForEach-Object { ConvertTo-BrCred $_ 'servicePrincipal' })
+  if ($appReg) {
+    $spKey += @($appReg.KeyCredentials      | Where-Object { $_ } | ForEach-Object { ConvertTo-BrCred $_ 'application' })
+    $spPwd += @($appReg.PasswordCredentials | Where-Object { $_ } | ForEach-Object { ConvertTo-BrCred $_ 'application' })
   }
   [pscustomobject]@{
     id                     = $sp.Id
@@ -1774,6 +1857,7 @@ $sps = foreach ($sp in Get-MgServicePrincipal -All) {
     eligibleRoles          = @($eligibleByPrincipal[$sp.Id])
     ownedApps              = @($owned | Where-Object { $_ })
     owners                 = @($owners)
+    oauth2PermissionGrants = @($grants)
     keyCredentials         = @($spKey)
     passwordCredentials    = @($spPwd)
   }
@@ -1788,6 +1872,7 @@ $groups = foreach ($g in Get-MgGroup -All -Property "id,displayName,isAssignable
     displayName        = $g.DisplayName
     isAssignableToRole = [bool]$g.IsAssignableToRole
     directoryRoles     = @($rolesByPrincipal[$g.Id])
+    eligibleRoles      = @($eligibleByPrincipal[$g.Id])
     members            = @($members)
     owners             = @($owners)
   }
@@ -1823,7 +1908,16 @@ const SAMPLE_TENANT = {
       directoryRoles: [], ownedApps: [] },
     { id: "sp-privileged", appId: "aaaaaaaa-0000-1111-2222-333333333333", displayName: "Legacy Automation Runner", accountEnabled: true,
       appOwnerOrganizationId: "contoso-1111-2222-3333-444455556666",
-      appRoles: ["RoleManagement.ReadWrite.Directory"], directoryRoles: [], ownedApps: [] },
+      appRoles: ["RoleManagement.ReadWrite.Directory"], directoryRoles: [], ownedApps: [],
+      owners: [{ id: "user-jdoe", type: "user", displayName: "J. Doe (former contractor)" },
+               { id: "sp-pipeline", type: "servicePrincipal" }] },  // human owner + SP owner of a GA-reaching app
+    { id: "sp-pipeline", appId: "33330000-0000-1111-2222-333333333333", displayName: "Deploy Pipeline", accountEnabled: true,
+      appOwnerOrganizationId: "contoso-1111-2222-3333-444455556666",
+      appRoles: ["Sites.Read.All"], directoryRoles: [], ownedApps: [] },     // owns Legacy Automation Runner -> GA via ownership
+    { id: "sp-elig", appId: "44440000-0000-1111-2222-333333333333", displayName: "Tier-0 Ops Tooling", accountEnabled: true,
+      appOwnerOrganizationId: "contoso-1111-2222-3333-444455556666",
+      appRoles: ["User.Read.All"], directoryRoles: [], ownedApps: [],
+      memberOf: ["grp-pim"] },                             // member of a PIM-eligible GA group -> GA, PIM-gated
     { id: "sp-signature", appId: "bbbbbbbb-0000-1111-2222-333333333333", displayName: "MailBrand Signatures", accountEnabled: true,
       appOwnerOrganizationId: "vendor2-eeee-ffff-0000-111111111111",
       appRoles: ["Mail.ReadWrite","Mail.Send","MailboxSettings.ReadWrite"], directoryRoles: [], ownedApps: [] },
@@ -1856,6 +1950,8 @@ const SAMPLE_TENANT = {
       directoryRoles: ["Global Administrator"], members: ["sp-ingroup"], owners: [] },
     { id: "grp-ra-priv", displayName: "PrivRole Operators", isAssignableToRole: true,
       directoryRoles: ["Privileged Role Administrator"], members: [], owners: ["sp-ownerapp"] },
+    { id: "grp-pim", displayName: "Tier-0 Admins (eligible)", isAssignableToRole: true,
+      directoryRoles: [], eligibleRoles: ["Global Administrator"], members: ["sp-elig"], owners: [] },
     { id: "grp-normal", displayName: "All Staff (not role-assignable)", isAssignableToRole: false,
       directoryRoles: [], members: [], owners: [] },
   ],
@@ -1888,6 +1984,7 @@ function clearData(which) {
     const b = $id("tanalyze"); if (b) b.disabled = true;
     const l = $id("file-label"); if (l) l.textContent = "Choose or drop a .json file";
     const si = $id("tenant-since"); if (si) si.value = "";
+    const tf = $id("tenant-file"); if (tf) tf.value = "";
     tenantData = null;
   } else if (which === "partner") {
     const p = $id("partner-paste"); if (p) p.value = "";
@@ -1895,18 +1992,19 @@ function clearData(which) {
     const n = $id("partner-parse-note"); if (n) { n.className = "parse-note"; n.textContent = "Cleared."; }
     const b = $id("panalyze"); if (b) b.disabled = true;
     const l = $id("pfile-label"); if (l) l.textContent = "Choose or drop a .json file";
+    const pf = $id("partner-file"); if (pf) pf.value = "";
     partnerData = null;
   }
 }
 
 // ---- Partner / GDAP export script (read-only) ----
 const PARTNER_SCRIPT = `# ============================================================
-#  Blast Radius — read-only PARTNER (GDAP) export
+#  Blast Radius: read-only PARTNER (GDAP) export
 #  Run in the PARTNER tenant. Maps delegated reach into customers.
 #  READ-ONLY: every call below is a *Get*. No writes. Read it first.
 #
 #  !! The file this produces maps every customer tenant a partner !!
-#  !! compromise can reach — the single most sensitive file an MSP !!
+#  !! compromise can reach: the single most sensitive file an MSP  !!
 #  !! can make. Treat it like a password vault: keep it off tickets !!
 #  !! and email, and delete it the moment the analysis is done.     !!
 # ============================================================
@@ -2069,9 +2167,17 @@ function init() {
     wireFileDrop("partner-file", "pfile-drop", "partner-paste", "panalyze", "pfile-label", doPartnerAnalyze, "partner-parse-note");
   }
 
+  const ks = $id("kb-stamp");
+  if (ks) {
+    ks.textContent = kbIsStale()
+      ? `Knowledge base ${kbAgeLabel()}. Check for a newer build.`
+      : `Knowledge base ${kbAgeLabel()}`;
+    if (kbIsStale()) ks.style.color = "#f59e0b";
+  }
+
   const fm = $id("footer-meta");
   if (fm) fm.textContent =
-    `Blast Radius v${typeof TOOL_VERSION!=="undefined"?TOOL_VERSION:"?"} · knowledge base v${KB_VERSION} · ${PERMISSIONS.length} permissions · ${ROLES.length} roles · ${CONTROLS.length + PARTNER_CONTROLS.length} controls · no network calls — verify in dev tools`;
+    `Blast Radius v${typeof TOOL_VERSION!=="undefined"?TOOL_VERSION:"?"} · knowledge base v${KB_VERSION} (${kbAgeLabel()}) · ${PERMISSIONS.length} permissions · ${ROLES.length} roles · ${CONTROLS.length + PARTNER_CONTROLS.length} controls · no network calls, verify in dev tools`;
 }
 
 function wireFileDrop(inputId, dropId, pasteId, btnId, labelId, analyzeFn, noteId) {

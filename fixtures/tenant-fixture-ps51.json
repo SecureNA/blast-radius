@@ -1,0 +1,169 @@
+{
+  "tenantId": "11111111-2222-3333-4444-555555555555",
+  "generatedAt": "2026-10-22T09:00:00.0000000-04:00",
+  "servicePrincipals": [
+    {
+      "id": "sp-0001",
+      "appId": "app-backup-0001",
+      "displayName": "Acme Cloud Backup",
+      "accountEnabled": true,
+      "appOwnerOrganizationId": "99999999-8888-7777-6666-555555555555",
+      "signInAudience": "AzureADMultipleOrgs",
+      "appRoles": [
+        "Mail.ReadWrite",
+        "Files.ReadWrite.All",
+        "Directory.Read.All",
+        "full_access_as_app"
+      ],
+      "directoryRoles": [],
+      "eligibleRoles": [],
+      "ownedApps": [],
+      "owners": [],
+      "keyCredentials": [],
+      "passwordCredentials": [
+        {
+          "DisplayName": "backup-secret",
+          "StartDateTime": "\/Date(1791158400000)\/",
+          "EndDateTime": "\/Date(1854316800000)\/",
+          "source": "servicePrincipal"
+        }
+      ]
+    },
+    {
+      "id": "sp-0002",
+      "appId": "app-teams-0002",
+      "displayName": "Acme Teams Manager",
+      "accountEnabled": true,
+      "appOwnerOrganizationId": "99999999-8888-7777-6666-555555555555",
+      "signInAudience": "AzureADMultipleOrgs",
+      "appRoles": [
+        "Application.ReadWrite.All",
+        "Directory.Read.All"
+      ],
+      "directoryRoles": [],
+      "eligibleRoles": [],
+      "ownedApps": [],
+      "owners": [],
+      "keyCredentials": [],
+      "passwordCredentials": []
+    },
+    {
+      "id": "sp-0003",
+      "appId": "app-legacy-0003",
+      "displayName": "Legacy Automation Runner",
+      "accountEnabled": true,
+      "appOwnerOrganizationId": "11111111-2222-3333-4444-555555555555",
+      "signInAudience": "AzureADMyOrg",
+      "appRoles": [
+        "RoleManagement.ReadWrite.Directory"
+      ],
+      "directoryRoles": [],
+      "eligibleRoles": [],
+      "ownedApps": [],
+      "owners": [
+        {
+          "id": "usr-admin-1",
+          "type": "user",
+          "displayName": "Dana Admin"
+        }
+      ],
+      "keyCredentials": [],
+      "passwordCredentials": []
+    },
+    {
+      "id": "sp-0004",
+      "appId": "app-pim-0004",
+      "displayName": "JIT Operations",
+      "accountEnabled": true,
+      "appOwnerOrganizationId": "11111111-2222-3333-4444-555555555555",
+      "signInAudience": "AzureADMyOrg",
+      "appRoles": [
+        "User.Read.All"
+      ],
+      "directoryRoles": [],
+      "eligibleRoles": [
+        "Global Administrator"
+      ],
+      "ownedApps": [],
+      "owners": [],
+      "keyCredentials": [],
+      "passwordCredentials": []
+    },
+    {
+      "id": "sp-0005",
+      "appId": "app-reporting-0005",
+      "displayName": "Insight Reporting",
+      "accountEnabled": true,
+      "appOwnerOrganizationId": "77777777-6666-5555-4444-333333333333",
+      "signInAudience": "AzureADMultipleOrgs",
+      "appRoles": [
+        "Directory.Read.All",
+        "User.Read.All",
+        "AuditLog.Read.All"
+      ],
+      "directoryRoles": [],
+      "eligibleRoles": [],
+      "ownedApps": [],
+      "owners": [],
+      "keyCredentials": [],
+      "passwordCredentials": []
+    },
+    {
+      "id": "sp-0006",
+      "appId": "app-owner-0006",
+      "displayName": "App Lifecycle Bot",
+      "accountEnabled": true,
+      "appOwnerOrganizationId": "11111111-2222-3333-4444-555555555555",
+      "signInAudience": "AzureADMyOrg",
+      "appRoles": [
+        "User.Read.All"
+      ],
+      "directoryRoles": [],
+      "eligibleRoles": [],
+      "ownedApps": [],
+      "owners": [],
+      "keyCredentials": [],
+      "passwordCredentials": []
+    },
+    {
+      "id": "sp-0007",
+      "appId": "app-hr-0007",
+      "displayName": "HR Group Sync",
+      "accountEnabled": true,
+      "appOwnerOrganizationId": "66666666-5555-4444-3333-222222222222",
+      "signInAudience": "AzureADMultipleOrgs",
+      "appRoles": [
+        "Group.ReadWrite.All",
+        "User.Read.All"
+      ],
+      "directoryRoles": [],
+      "eligibleRoles": [],
+      "ownedApps": [],
+      "owners": [],
+      "keyCredentials": [],
+      "passwordCredentials": []
+    }
+  ],
+  "groups": [
+    {
+      "id": "grp-tier0",
+      "displayName": "Tier-0 Admins",
+      "isAssignableToRole": true,
+      "directoryRoles": [
+        "Global Administrator"
+      ],
+      "members": [],
+      "owners": [
+        "app-owner-0006"
+      ]
+    },
+    {
+      "id": "grp-staff",
+      "displayName": "All Staff",
+      "isAssignableToRole": false,
+      "directoryRoles": [],
+      "members": [],
+      "owners": []
+    }
+  ]
+}

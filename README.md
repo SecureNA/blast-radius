@@ -16,11 +16,11 @@ The offline build adds whole-tenant analysis and GDAP partner mapping. It is mea
 
 ## Running the offline build
 
-Download `blast-radius-local.html` from the releases page and open it in any modern browser, either by double-clicking it or through `file://`. The read-only PowerShell export scripts that produce tenant and GDAP data are embedded in the tool itself. The tenant export uses the Microsoft Graph PowerShell SDK and needs `Application.Read.All`, `Directory.Read.All`, and `RoleManagement.Read.Directory`.
+Download `blast-radius-local.html` from this repository (or from a tagged release, once there is one) and open it in any modern browser, either by double-clicking it or through `file://`. The read-only PowerShell export scripts that produce tenant and GDAP data are embedded in the tool itself. The tenant export uses the Microsoft Graph PowerShell SDK and needs `Application.Read.All`, `Directory.Read.All`, and `RoleManagement.Read.Directory`.
 
 ## Verifying what you run
 
-Check the file before you paste client data into it. Each release ships a `SHA256SUMS` file. Compare it against your download with `Get-FileHash .\blast-radius-local.html -Algorithm SHA256` on Windows or `sha256sum -c SHA256SUMS` on Linux and macOS.
+Check the file before you paste client data into it. The repository carries a `SHA256SUMS` file that the build regenerates every time. Compare it against your download with `Get-FileHash .\blast-radius-local.html -Algorithm SHA256` on Windows or `sha256sum -c SHA256SUMS` on Linux and macOS.
 
 You don't have to take the no-network claim on faith either. Both builds carry a Content Security Policy that blocks every outbound connection, and the exported reports carry one too. Open DevTools, watch the Network tab while you analyze a tenant, and confirm nothing leaves.
 

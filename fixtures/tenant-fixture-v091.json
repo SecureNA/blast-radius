@@ -1,0 +1,77 @@
+{
+  "tenantId": "22222222-3333-4444-5555-666666666666",
+  "generatedAt": "2026-10-22T13:00:00.0000000Z",
+  "servicePrincipals": [
+    {
+      "id": "sp-1001", "appId": "app-ops-1001", "displayName": "Ops Console",
+      "accountEnabled": true, "appOwnerOrganizationId": "22222222-3333-4444-5555-666666666666",
+      "signInAudience": "AzureADMyOrg",
+      "appRoles": ["User.Read.All"], "directoryRoles": [], "eligibleRoles": [],
+      "ownedApps": [], "owners": [], "oauth2PermissionGrants": [],
+      "keyCredentials": [], "passwordCredentials": []
+    },
+    {
+      "id": "sp-1002", "appId": "app-sync-1002", "displayName": "Internal Directory Sync",
+      "accountEnabled": true, "appOwnerOrganizationId": "22222222-3333-4444-5555-666666666666",
+      "signInAudience": "AzureADMyOrg",
+      "appRoles": ["User.Read.All"], "directoryRoles": [], "eligibleRoles": [],
+      "ownedApps": [], "owners": [], "oauth2PermissionGrants": [],
+      "keyCredentials": [
+        { "displayName": "sync-cert", "startDateTime": "2025-01-10T00:00:00.0000000Z", "endDateTime": "2030-01-10T00:00:00.0000000Z", "source": "application" }
+      ],
+      "passwordCredentials": []
+    },
+    {
+      "id": "sp-1003", "appId": "app-mailer-1003", "displayName": "Vendor Mailer",
+      "accountEnabled": true, "appOwnerOrganizationId": "88888888-7777-6666-5555-444444444444",
+      "signInAudience": "AzureADMultipleOrgs",
+      "appRoles": [], "directoryRoles": [], "eligibleRoles": [],
+      "ownedApps": [], "owners": [],
+      "oauth2PermissionGrants": [ { "scope": "Mail.Send User.Read", "consentType": "AllPrincipals" } ],
+      "keyCredentials": [
+        { "displayName": "added-cert", "startDateTime": "2026-10-14T00:00:00.0000000Z", "endDateTime": "2027-10-14T00:00:00.0000000Z", "source": "servicePrincipal" }
+      ],
+      "passwordCredentials": []
+    },
+    {
+      "id": "sp-1004", "appId": "app-msfp-1004", "displayName": "Office 365 Exchange Online",
+      "accountEnabled": true, "appOwnerOrganizationId": "f8cdef31-a31e-4b4a-93e4-5f571e91255a",
+      "signInAudience": "AzureADMultipleOrgs",
+      "appRoles": [], "directoryRoles": [], "eligibleRoles": [],
+      "ownedApps": [], "owners": [], "oauth2PermissionGrants": [],
+      "keyCredentials": [],
+      "passwordCredentials": [
+        { "displayName": null, "startDateTime": "2026-10-13T00:00:00.0000000Z", "endDateTime": "2026-12-13T00:00:00.0000000Z", "source": "servicePrincipal" }
+      ]
+    },
+    {
+      "id": "sp-1005", "appId": "app-pipe-1005", "displayName": "Deploy Pipeline",
+      "accountEnabled": true, "appOwnerOrganizationId": "22222222-3333-4444-5555-666666666666",
+      "signInAudience": "AzureADMyOrg",
+      "appRoles": ["Sites.Read.All"], "directoryRoles": [], "eligibleRoles": [],
+      "ownedApps": [], "owners": [], "oauth2PermissionGrants": [],
+      "keyCredentials": [], "passwordCredentials": []
+    },
+    {
+      "id": "sp-1006", "appId": "app-runner-1006", "displayName": "Tier-0 Runner",
+      "accountEnabled": true, "appOwnerOrganizationId": "22222222-3333-4444-5555-666666666666",
+      "signInAudience": "AzureADMyOrg",
+      "appRoles": ["RoleManagement.ReadWrite.Directory"], "directoryRoles": [], "eligibleRoles": [],
+      "ownedApps": [],
+      "owners": [ { "id": "sp-1005", "type": "servicePrincipal", "displayName": "Deploy Pipeline" } ],
+      "oauth2PermissionGrants": [], "keyCredentials": [], "passwordCredentials": []
+    }
+  ],
+  "groups": [
+    {
+      "id": "grp-elig", "displayName": "Tier-0 Admins (eligible)", "isAssignableToRole": true,
+      "directoryRoles": [], "eligibleRoles": ["Global Administrator"],
+      "members": ["sp-1001"], "owners": []
+    },
+    {
+      "id": "grp-elig-open", "displayName": "Not role-assignable (eligible on paper)", "isAssignableToRole": false,
+      "directoryRoles": [], "eligibleRoles": ["Global Administrator"],
+      "members": ["sp-1005"], "owners": []
+    }
+  ]
+}

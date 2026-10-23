@@ -1,0 +1,50 @@
+name: build-and-test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write      # build-provenance attestation
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Engine tests (fixtures through the real engine)
+        run: node test/fixture.test.js
+
+      - name: Build (fails on missing CSP, external resources, leaked tenant code)
+        run: python3 build.py
+
+      - name: Built files must match source
+        # Catches hand-edits to the built HTML and builds that weren't committed.
+        run: |
+          if ! git diff --exit-code -- blast-radius-local.html blast-radius-public.html docs/index.html SHA256SUMS; then
+            echo "::error::Built files are out of date or were edited by hand. Run python3 build.py and commit the result."
+            exit 1
+          fi
+
+      - name: Verify hashes
+        run: sha256sum -c SHA256SUMS
+
+      - name: Attest build provenance
+        if: github.event_name == 'push'
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: |
+            blast-radius-local.html
+            blast-radius-public.html

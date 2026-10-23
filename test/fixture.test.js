@@ -1,6 +1,9 @@
 // Fixture-based regression: loads the real fixtures through the actual engine
 // (as the browser would), checks verdicts, flags, PascalCase tolerance, and the
-// new v0.9 detections. Run: node test/fixture.test.js
+// v0.9/v0.9.1 detections. Run: node test/fixture.test.js
+//
+// Flags are matched on their stable `code`, never on display text, so a copy edit
+// can't silently break (or silently pass) an assertion.
 const vm = require("vm"); const fs = require("fs"); const path = require("path");
 const ROOT = path.join(__dirname, "..");
 
@@ -15,6 +18,8 @@ const partner = JSON.parse(fs.readFileSync(path.join(ROOT,"fixtures/partner-fixt
 
 let ok=0, fail=0; const A=(c,m)=>{ (c?ok++:fail++); console.log((c?"PASS":"FAIL")+" "+m); };
 const get = (r,id) => r.sps.find(s=>s.id===id);
+const hasFlag = (sp, code, sev) => (sp.credFlags||[]).some(f => f.code === code && (!sev || f.sev === sev));
+const load = name => JSON.parse(fs.readFileSync(path.join(ROOT,"fixtures",name),"utf8"));
 
 // ---------- TENANT fixture ----------
 sb.__tenant = tenant;
@@ -25,11 +30,11 @@ A(get(rt,"sp-0003").finalSev === "direct", "Legacy Runner (RoleManagement.ReadWr
 A(get(rt,"sp-0002").finalSev === "direct" && get(rt,"sp-0002").confirmedViaChain,
   "Teams Manager (Application.ReadWrite.All) => confirmed via backdoor chain to the privileged app");
 A(get(rt,"sp-0001").finalSev === "none", "Backup app (data scopes only) => no known path");
-A(get(rt,"sp-0001").credFlags.some(f=>/externally-owned/i.test(f.text) && f.sev==="high"),
+A(hasFlag(get(rt,"sp-0001"), "xtenant", "high"),
   "Backup app (vendor-owned SP with tenant-side secret) => cross-tenant credential HIGH flag");
 
 // PascalCase credential fields (StartDateTime/EndDateTime) parse for long-lived detection
-A(get(rt,"sp-0001").credFlags.some(f=>/long-lived/i.test(f.text)),
+A(hasFlag(get(rt,"sp-0001"), "longlived"),
   "PascalCase credential dates parsed (long-lived secret detected)");
 
 // PIM-eligible distinct state
@@ -56,11 +61,54 @@ A(rt.roll.pimGa === 1, "rollup counts 1 PIM-gated GA app ("+rt.roll.pimGa+")");
 
 // changes-since filter honours the boundary
 const rtSince = vm.runInContext("analyzeTenant(__tenant, {since:'2026-10-01'})", sb);
-A(get(rtSince,"sp-0001").credFlags.some(f=>/after the review date/i.test(f.text)),
+A(hasFlag(get(rtSince,"sp-0001"), "since", "high"),
   "changes-since flags the backup secret created 2026-10-05");
 const rtSince2 = vm.runInContext("analyzeTenant(__tenant, {since:'2026-10-10'})", sb);
-A(!get(rtSince2,"sp-0001").credFlags.some(f=>/after the review date/i.test(f.text)),
+A(!hasFlag(get(rtSince2,"sp-0001"), "since"),
   "changes-since does not flag the secret when date is after its start");
+
+A(rt.sps.every(sp => (sp.credFlags||[]).every(f => typeof f.code === "string" && f.code)),
+  "every credential flag carries a stable code");
+
+// ---------- Windows PowerShell 5.1 export (same tenant, "/Date(ms)/" timestamps) ----------
+// v0.9.0 parsed these as NaN, which silently disabled every time-based flag.
+sb.__ps51 = load("tenant-fixture-ps51.json");
+const r51 = vm.runInContext("analyzeTenant(__ps51, {since:'2026-10-01'})", sb);
+A(hasFlag(get(r51,"sp-0001"), "longlived"), "PS 5.1 /Date(ms)/ dates parsed (long-lived secret detected)");
+A(hasFlag(get(r51,"sp-0001"), "since", "high"), "PS 5.1 /Date(ms)/ dates honour the changes-since filter");
+A(r51.roll.ga === rt.roll.ga && r51.roll.crossTenantCreds === rt.roll.crossTenantCreds,
+  "PS 5.1 export yields the same verdicts as the PowerShell 7 export");
+
+// ---------- v0.9.1 export shape (lowercase ISO creds, grants, eligible groups, SP owners) ----------
+sb.__v091 = load("tenant-fixture-v091.json");
+const r91 = vm.runInContext("analyzeTenant(__v091, {since:'2026-10-10'})", sb);
+A(get(r91,"sp-1001").finalSev === "direct" && get(r91,"sp-1001").viaPim === true &&
+  get(r91,"sp-1001").pimGroup && get(r91,"sp-1001").pimGroup.id === "grp-elig",
+  "Ops Console (member of a PIM-eligible GA role-assignable group) => direct, PIM-gated via group");
+A(get(r91,"sp-1005").viaPim !== true,
+  "eligibility on a NON-role-assignable group is ignored (cannot carry a directory role)");
+A(get(r91,"sp-1005").finalSev === "direct" && get(r91,"sp-1005").gaViaOwnership === true,
+  "Deploy Pipeline (service-principal owner of a GA-reaching app) => direct via ownership");
+A((get(r91,"sp-1006").ownerFindings||[]).length === 0,
+  "an SP owner is a backdoor edge, not a human-owner finding");
+A(get(r91,"sp-1002").credFlags.some(f => f.code === "longlived" && /app registration/.test(f.why)),
+  "app-registration credential source carried into the flag");
+A(hasFlag(get(r91,"sp-1003"), "xtenant", "high") && hasFlag(get(r91,"sp-1003"), "since", "high"),
+  "Vendor Mailer: tenant-side cert on a vendor SP, created after the review date");
+A(get(r91,"sp-1003").perms.some(p => p.id === "Mail.Send"),
+  "delegated grant scopes (oauth2PermissionGrants) resolved into permissions");
+A(hasFlag(get(r91,"sp-1004"), "ms-firstparty", "high") && !hasFlag(get(r91,"sp-1004"), "xtenant"),
+  "credential on a Microsoft first-party SP => its own HIGH flag, not the generic vendor flag");
+A(r91.roll.crossTenantCreds === 2, "rollup counts vendor + Microsoft cross-tenant credentials ("+r91.roll.crossTenantCreds+")");
+A(r91.roll.pimGa === 1, "rollup counts the PIM-gated group path ("+r91.roll.pimGa+")");
+
+// client report carries the v0.9 findings (the deliverable a client actually sees)
+vm.runInContext("tenantData = analyzeTenant(__v091, {since:'2026-10-10'}); tenantData.since = '2026-10-10';", sb);
+const rep = vm.runInContext("buildReportHTML('tenant')", sb);
+A(/Content-Security-Policy/.test(rep) && /default-src 'none'/.test(rep), "exported report carries a no-network CSP");
+A(/Global Admin \(PIM-gated\)/.test(rep), "report labels PIM-gated verdicts as such");
+A(/Credential and ownership findings/.test(rep) && /Review date/.test(rep), "report lists credential/ownership findings and the review date");
+A(/owns the more privileged app/.test(rep), "report explains the ownership path");
 
 // ---------- PARTNER fixture (raw Graph shape: accessDetails.unifiedRoles GUIDs) ----------
 sb.__partner = partner;
@@ -73,6 +121,21 @@ A(cust("cust-borealis-0002").relstat === "expiring", "Borealis relationship expi
 const rmm = rp.keyList.find(k=>k.name.includes("RMM"));
 A(rmm && rmm.directCount >= 1, "RMM Automation group is a master key (GA into Acme)");
 A(rp.roll.noMfaMembers === 1, "1 admin without MFA (Dave) counted");
+
+// ---------- public build engine: tenant/partner code stripped, single-app still works ----------
+const STRIP = /\/\/ <<<STRIP-PUBLIC-START>>>[\s\S]*?\/\/ <<<STRIP-PUBLIC-END>>>\n/g;
+const pubApp = fs.readFileSync(path.join(ROOT,"app.js"),"utf8").replace(STRIP, "");
+// fresh sandbox: copy only the browser stubs, not the globals the full engine defined
+const sbPub = {}; ["navigator","FileReader","alert","setTimeout","console","Blob","URL"].forEach(k => sbPub[k] = sb[k]);
+sbPub.document = Object.assign({}, sb.document, { addEventListener: () => {} });
+vm.createContext(sbPub);
+let pubOk = true;
+try { vm.runInContext(fs.readFileSync(path.join(ROOT,"kb.js"),"utf8")+"\n"+pubApp, sbPub); } catch (e) { pubOk = false; console.log(e); }
+A(pubOk, "public build's engine loads with tenant/partner code stripped");
+A(vm.runInContext("typeof analyzeTenant", sbPub) === "undefined" && vm.runInContext("typeof SAMPLE_TENANT", sbPub) === "undefined",
+  "public build contains no tenant engine or tenant sample");
+A(vm.runInContext("analyzeApp(['RoleManagement.ReadWrite.Directory'].map(resolvePerm), [], 'single-tenant').sev", sbPub) === "direct",
+  "public build still classifies a single app (RoleManagement.ReadWrite.Directory => direct)");
 
 console.log(`\n${ok} passed, ${fail} failed`);
 process.exit(fail?1:0);
