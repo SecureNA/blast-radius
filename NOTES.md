@@ -3,7 +3,7 @@
 Working notes for anyone continuing this project (including future-me). For the
 user-facing overview and GitHub Pages setup, see `README.md`.
 
-Current version: **v0.9.0** (pre-v1). Knowledge base: **2026.10.22**.
+Current version: **v0.9.1** (pre-v1). Knowledge base: **2026.10.22**.
 
 ---
 
@@ -174,17 +174,13 @@ group, partner, report, DOM-smoke). A good v1 task is to move them all under
 
 Highest-leverage first:
 
-1. **CI + integrity** — GitHub Actions: build, run the full test suite, generate
-   `SHA256SUMS`, attach build-provenance attestation. Keeps hashes fresh and
-   gives skeptics something stronger than a README hash. (Provenance proves
-   *origin/integrity*, not correctness — pair with the dated KB changelog.)
-2. **Playwright test** — load both built files headless, assert zero CSP
+1. **Playwright test** — load both built files headless, assert zero CSP
    violations, expected verdicts on the fixture, credential flags firing.
    (Couldn't run headless in the dev environment; it's mostly packaging.)
-3. **Access-package / app-role grants on non-role-assignable groups** — the one
+2. **Access-package / app-role grants on non-role-assignable groups** — the one
    remaining place the tool says "conditional, can't tell" when richer export
    data could resolve it to confirmed-or-cleared.
-4. **Verdict diff between two exports** — "last month this app was 'no known
+3. **Verdict diff between two exports** — "last month this app was 'no known
    path', now it reaches GA, here's why." Drift detection is arguably more
    actionable for a scheduled MSP run than any single snapshot. Bigger — likely
    its own version.
@@ -201,11 +197,10 @@ Safety posture to preserve as features grow:
 
 ---
 
-## Gotchas / footguns
+## Gotchas
 
 - Source is `app.source.html`; the only `index.html` is the deployed public
   build on Pages. Don't deploy the local build. See "Repo layout" above.
-- Incognito Claude chats can't create/update artifacts; this was built as files.
 - `build.py` strips mode 2/3 JS via sentinel comments; if you add code that
   single-app mode needs, keep it OUTSIDE the `<<<STRIP-PUBLIC-*>>>` fences (and
   shared utilities like `escapeHtml`/`dedupBy` live up top for exactly this).
